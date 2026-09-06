@@ -12,14 +12,23 @@ export async function ensureSchema(): Promise<void> {
 }
 
 /**
- * Чистит данные между тестами. accounts CASCADE уносит всё, что на неё
- * ссылается; таблицы без ссылки на аккаунт чистятся отдельно.
+ * Чистит данные между тестами. Справочники — реестр документов и их
+ * опубликованные редакции — не трогаются: это не данные пользователя,
+ * а часть схемы, и без них согласие некуда записать.
  */
+const REFERENCE_TABLES = new Set([
+  "schema_migrations",
+  "legal_documents",
+  "legal_document_versions",
+  "oidc_clients",
+]);
+
 export async function resetData(): Promise<void> {
   await ensureSchema();
   const { rows } = await getPool().query<{ tablename: string }>(
     `SELECT tablename FROM pg_tables
-     WHERE schemaname = 'public' AND tablename <> 'schema_migrations'`,
+     WHERE schemaname = 'public' AND NOT (tablename = ANY($1::text[]))`,
+    [[...REFERENCE_TABLES]],
   );
   if (!rows.length) return;
   const names = rows.map((r) => `"${r.tablename}"`).join(", ");
