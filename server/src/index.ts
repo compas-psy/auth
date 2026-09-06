@@ -5,6 +5,7 @@ import { getPool } from "./db/pool.js";
 import { runMigrations } from "./db/migrate.js";
 import { logger } from "./lib/logging.js";
 import { buildProvider, OIDC_MOUNT } from "./oidc/provider.js";
+import { registerAuthRoutes } from "./api/v1/auth.js";
 
 export interface BuildOptions {
   /** Прогонять ли миграции при сборке. В тестах — один раз, в проде — всегда. */
@@ -59,6 +60,7 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   }
 
   app.decorate("oidc", provider);
+  await registerAuthRoutes(app);
   return app;
 }
 
