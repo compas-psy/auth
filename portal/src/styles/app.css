@@ -1,0 +1,169 @@
+@import "./tokens.css";
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink-900);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 40px;
+}
+
+.brand {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold-500);
+  text-align: center;
+  margin: 0 0 24px;
+}
+
+h1 {
+  font-size: 24px;
+  line-height: 1.25;
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-align: center;
+}
+
+.subtitle {
+  color: var(--ink-500);
+  text-align: center;
+  margin: 0 0 28px;
+}
+
+.providers { display: grid; gap: 10px; }
+
+/* Кнопки провайдеров визуально равны между собой: ни размером, ни
+   цветом, ни порядком не выделен ни один (задание 08 §4.1).
+   Вид — нейтральный, дизайн-системы СИМПАС: брендбуки провайдеров
+   не проверены, и место под знак 20x20 оставлено так, чтобы фирменная
+   кнопка встала без перекомпоновки экрана. */
+.provider-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+.provider-button:hover { background: var(--fill-light); }
+.provider-mark {
+  width: 20px; height: 20px; flex: 0 0 20px;
+  border-radius: 4px; background: var(--border);
+}
+
+.provider-notice {
+  color: var(--ink-500);
+  font-size: 13px;
+  margin: 16px 0 0;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-400);
+  font-size: 13px;
+  margin: 24px 0;
+}
+.divider::before, .divider::after {
+  content: ""; flex: 1; height: 1px; background: var(--border);
+}
+
+label { display: block; font-size: 13px; color: var(--ink-500); margin-bottom: 6px; }
+
+input[type="email"], input[type="text"] {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  color: var(--ink-900);
+  background: var(--white);
+}
+input:focus-visible { outline: 2px solid var(--forest-700); outline-offset: 1px; }
+
+.primary-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 14px;
+  background: var(--forest-800);
+  color: var(--white);
+  border: 0;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.primary-button:hover { background: var(--forest-900); }
+.primary-button:disabled { background: var(--border); color: var(--ink-400); cursor: default; }
+
+.secondary-button {
+  min-height: 44px;
+  padding: 10px 18px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+.secondary-button:disabled { color: var(--ink-400); cursor: default; }
+
+/* Юридическая строка. Стоит под ОБОИМИ блоками и относится ко всей
+   форме: строка только под почтой оставила бы кнопки провайдеров без
+   указания на принимаемый документ (задание 08 §2.5). */
+.legal {
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-500);
+}
+.legal a { color: var(--forest-700); }
+
+.field-error { color: var(--danger); font-size: 13px; margin: 8px 0 0; }
+.hint { color: var(--ink-500); font-size: 13px; }
+.muted { color: var(--ink-400); font-size: 13px; }
+
+.code-cells { display: flex; gap: 8px; justify-content: center; margin: 20px 0 8px; }
+.code-cells input {
+  width: 48px; height: 56px; text-align: center; font-size: 20px; font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .card { padding: 24px 20px; border-radius: 16px; }
+  .screen { padding: 20px 12px; }
+}

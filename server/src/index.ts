@@ -11,6 +11,7 @@ import { registerIdentityRoutes } from "./api/v1/identities.js";
 import { registerSessionRoutes } from "./api/v1/sessions.js";
 import { registerConsentRoutes } from "./api/v1/consents.js";
 import { registerAuditRoutes } from "./api/v1/audit.js";
+import { registerInteractionRoutes } from "./oidc/interactions.js";
 
 export interface BuildOptions {
   /** Прогонять ли миграции при сборке. В тестах — один раз, в проде — всегда. */
@@ -71,6 +72,7 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   await registerSessionRoutes(app);
   await registerConsentRoutes(app);
   await registerAuditRoutes(app);
+  await registerInteractionRoutes(app, provider);
   return app;
 }
 
