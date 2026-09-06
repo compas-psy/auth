@@ -13,6 +13,7 @@ import { registerConsentRoutes } from "./api/v1/consents.js";
 import { registerAuditRoutes } from "./api/v1/audit.js";
 import { registerInteractionRoutes } from "./oidc/interactions.js";
 import { registerPortal } from "./ui/static.js";
+import { renderScreen } from "./ui/render.js";
 
 export interface BuildOptions {
   /** Прогонять ли миграции при сборке. В тестах — один раз, в проде — всегда. */
@@ -30,6 +31,36 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
     trustProxy: true,
     bodyLimit: 64 * 1024,
   });
+
+  /**
+   * Общий обработчик отказов.
+   *
+   * Наружу не уходит ни причина, ни путь, ни стек: сообщение ошибки
+   * содержит адреса и имена — «ECONNREFUSED at /var/lib/postgresql»
+   * это рассказ о внутреннем устройстве тому, кто спрашивал про вход.
+   *
+   * Т8: человек, пришедший входить, когда сервис нездоров, видит
+   * человеческий текст экрана C4, а не техническую ошибку.
+   */
+  app.setErrorHandler(async (error: unknown, req, reply) => {
+    const raw = (error as { statusCode?: unknown }).statusCode;
+    const status = typeof raw === "number" && raw >= 400 ? raw : 500;
+    if (status >= 500) {
+      logger.error({ event: "request_failed", outcome: "fail", status });
+    }
+    const wantsHtml = String(req.headers.accept ?? "").includes("text/html");
+    if (wantsHtml) {
+      return reply
+        .code(status)
+        .type("text/html; charset=utf-8")
+        .header("cache-control", "no-store")
+        .send(renderScreen("Unavailable", {}));
+    }
+    return reply.code(status).send({ error: status >= 500 ? "unavailable" : "bad_request" });
+  });
+
+  app.setNotFoundHandler(async (_req, reply) =>
+    reply.code(404).send({ error: "not_found" }));
 
   app.get("/healthz", async (_req, reply) => {
     try {

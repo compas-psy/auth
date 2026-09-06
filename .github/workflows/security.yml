@@ -1,0 +1,72 @@
+name: Безопасность
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Секреты в диффе
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Поиск секретов
+        run: |
+          set -uo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            RANGE="origin/${{ github.base_ref }}...HEAD"
+          else
+            RANGE="HEAD~1...HEAD"
+          fi
+          DIFF=$(git diff "$RANGE" -- . ':(exclude)*.md' ':(exclude)design/*' || true)
+
+          # Шаблоны того, чего в репозитории быть не должно ни при каких
+          # обстоятельствах. Ключи подписи сервис заводит себе сам, в томе.
+          PATTERNS='BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|"d"[[:space:]]*:[[:space:]]*"[A-Za-z0-9_-]{100,}|AUTH_SECRET=[^$[:space:]]|SSH_PRIVATE_KEY=[^$[:space:]]|client_secret[[:space:]]*[:=][[:space:]]*"[A-Za-z0-9_-]{20,}"'
+          if printf '%s' "$DIFF" | grep -nEi "$PATTERNS"; then
+            echo "::error::В диффе найдено похожее на секрет. Секреты в репозиторий не кладутся."
+            exit 1
+          fi
+          echo "Секретов в диффе не найдено."
+
+  audit:
+    name: Уязвимости зависимостей
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: npm audit
+        run: |
+          set -e
+          for dir in server portal devsite packages/id-client; do
+            echo "── $dir"
+            npm audit --prefix "$dir" --audit-level=high
+          done
+
+  invariants:
+    name: Инварианты И-1 и И-2
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Запрещённые имена колонок в схеме
+        run: |
+          set -uo pipefail
+          FORBIDDEN='password|passphrase|vault_key|master_key|wrapped_key|key_material|recovery_key|kek|secret_key|phone|otp|sms_code'
+          # Комментарии вырезаются: запрет про имена колонок, а не про
+          # то, что запрещённое слово нельзя назвать в пояснении.
+          if sed 's/--.*//' server/src/db/migrations/*.sql | grep -nEi "\b($FORBIDDEN)\b"; then
+            echo "::error::И-2 нарушен: в миграциях запрещённое имя колонки."
+            exit 1
+          fi
+          echo "И-2: запрещённых имён в миграциях нет."

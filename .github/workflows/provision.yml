@@ -1,0 +1,92 @@
+name: Развернуть auth.cmpas.ru (nginx + TLS)
+
+# РАЗОВОЕ (и повторяемое без вреда) обустройство сервера под сервис
+# идентичности: свой vhost nginx и свой сертификат Let's Encrypt.
+#
+# Устроено ровно так же, как уже сделано для moments.cmpas.ru в
+# репозитории cmpas.ru: тот способ обнаружен чтением, проверен на
+# соседе и не выдуман здесь.
+#
+# ПОЧЕМУ ЭТО НЕ МОЖЕТ СЛОМАТЬ cmpas.ru:
+#   * создаются ТОЛЬКО файлы сервиса: sites-available/auth.cmpas.ru
+#     и symlink на него. Конфигурация cmpas.ru не читается и не правится;
+#   * vhost включается, затем проверяется ВЕСЬ конфиг через nginx -t, и
+#     перезагрузка идёт только если проверка прошла. Не прошла — symlink
+#     снимается, и в sites-enabled остаётся только то, что проходит
+#     nginx -t. Ни выкладка соседа, ни продление его сертификата не
+#     унаследуют от нас сломанный файл;
+#   * reload у nginx мягкий, соединения не рвутся. Это не restart;
+#   * certbot вызывается с -d auth.cmpas.ru, то есть трогает только наш
+#     блок. Сертификат cmpas.ru не затрагивается. Если certbot не
+#     справился — сервис остаётся на HTTP, cmpas.ru не задет.
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "deploy/proxy/**"
+      - ".github/workflows/provision.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: provision-auth
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    name: Установить vhost и выпустить сертификат
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Загрузить ключ
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Передать конфигурацию прокси
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            deploy/proxy/auth.cmpas.ru.conf \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/auth.cmpas.ru.conf"
+
+      - name: Установить vhost и выпустить TLS
+        run: |
+          ssh -i ~/.ssh/deploy_key "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+
+          # 1) Ставим только свой файл. Чужие не читаем и не трогаем.
+          install -m 644 /tmp/auth.cmpas.ru.conf /etc/nginx/sites-available/auth.cmpas.ru
+
+          # 2) Включаем и проверяем ВЕСЬ конфиг. Не прошло — откатываем
+          #    включение, чтобы в sites-enabled осталось только рабочее.
+          ln -sf /etc/nginx/sites-available/auth.cmpas.ru /etc/nginx/sites-enabled/auth.cmpas.ru
+          if nginx -t; then
+            systemctl reload nginx
+            echo "OK: vhost auth.cmpas.ru включён, nginx перезагружен. cmpas.ru не тронут."
+          else
+            rm -f /etc/nginx/sites-enabled/auth.cmpas.ru
+            echo "ОШИБКА: nginx -t не прошёл. Включение откачено, nginx НЕ перезагружен, cmpas.ru без изменений." >&2
+            exit 1
+          fi
+
+          # 3) Сертификат — только если его ещё нет, и только на наш домен.
+          if [ ! -e /etc/letsencrypt/live/auth.cmpas.ru/fullchain.pem ]; then
+            certbot --nginx -d auth.cmpas.ru --non-interactive --agree-tos \
+              -m admin@cmpas.ru --redirect \
+              && echo "OK: сертификат для auth.cmpas.ru выпущен." \
+              || echo "ВНИМАНИЕ: certbot не справился — сервис пока по HTTP. Повторите запуск после появления A-записи. cmpas.ru не задет."
+          else
+            echo "Сертификат для auth.cmpas.ru уже есть, certbot пропущен."
+          fi
+          REMOTE
+
+      - name: Убрать ключ
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

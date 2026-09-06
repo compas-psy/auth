@@ -1,0 +1,109 @@
+name: Выкладка
+
+# Вариант Б по Задаче 16, шаг 1. Основание выбора — чтение соседнего
+# репозитория (docs/reports/E2/16-публикация.md): сервер СОБИРАЕТ образы
+# из исходников по SSH и не умеет тянуть их из реестра. Ни одного
+# упоминания ghcr.io или docker push в cmpas.ru нет.
+#
+# Способ доставки повторяет уже работающий у соседа и переиспользует
+# те же три секрета.
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "**/*.md"
+      - "design/**"
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-auth
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Выложить на auth.cmpas.ru
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Загрузить ключ
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Выложить
+        env:
+          SIMPASID_DB_PASSWORD: ${{ secrets.SIMPASID_DB_PASSWORD }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
+            "SIMPASID_DB_PASSWORD='${SIMPASID_DB_PASSWORD}' bash -s" <<'REMOTE'
+          set -euo pipefail
+
+          DIR=/var/www/auth.cmpas.ru
+          # Свой каталог, рядом с /var/www/cmpas.ru и /var/www/zapiski,
+          # но отдельный. Ни один файл соседа не читается и не пишется.
+          if [ ! -d "$DIR/.git" ]; then
+            git clone --depth 1 https://github.com/compas-psy/auth "$DIR"
+          fi
+          cd "$DIR"
+          git fetch origin main
+          git reset --hard origin/main
+
+          # Пароль базы заводится ОДИН раз и дальше живёт на сервере:
+          # он не в git и не в образе. Если секрет не передан, берём
+          # уже записанный — иначе перезапуск сменил бы пароль и
+          # отрезал приложение от собственной базы.
+          if [ ! -f .env ]; then touch .env; fi
+          if [ -n "${SIMPASID_DB_PASSWORD:-}" ]; then
+            if grep -q '^SIMPASID_DB_PASSWORD=' .env; then
+              sed -i "s|^SIMPASID_DB_PASSWORD=.*|SIMPASID_DB_PASSWORD=${SIMPASID_DB_PASSWORD}|" .env
+            else
+              printf 'SIMPASID_DB_PASSWORD=%s\n' "${SIMPASID_DB_PASSWORD}" >> .env
+            fi
+          elif ! grep -q '^SIMPASID_DB_PASSWORD=' .env; then
+            # Ни от человека, ни из файла — заводим сами и запоминаем.
+            printf 'SIMPASID_DB_PASSWORD=%s\n' "$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)" >> .env
+          fi
+          chmod 600 .env
+
+          # Свой проект Compose: -p simpasid. Стек соседа не затрагивается.
+          docker compose --project-name simpasid up -d --build
+
+          # Ждём, пока проверка здоровья скажет, что сервис поднялся.
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 5 http://127.0.0.1:3100/healthz >/dev/null 2>&1; then
+              echo "OK: сервис отвечает на /healthz."
+              break
+            fi
+            if [ "$i" = "60" ]; then
+              echo "ОШИБКА: сервис не поднялся за две минуты." >&2
+              docker compose --project-name simpasid logs --tail 200 app >&2 || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
+          REMOTE
+
+      - name: Убрать ключ
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
+
+      - name: Проверить, что сосед жив
+        run: |
+          # Публикация сервиса не имеет права задеть cmpas.ru. Проверка
+          # снаружи, а не по логам: она и есть доказательство.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 https://cmpas.ru/ || echo 000)
+          echo "cmpas.ru -> $code"
+          case "$code" in 2*|3*) ;; *) echo "::error::cmpas.ru отвечает $code после выкладки"; exit 1;; esac

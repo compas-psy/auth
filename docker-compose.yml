@@ -1,0 +1,74 @@
+# Публикация SimpasID на тот же боевой сервер, что и cmpas.ru.
+#
+# Требование Р-1: общим остаётся ТОЛЬКО железо и реверс-прокси.
+# Свой проект Compose, своя база, свой том, свои лимиты. Ни одной
+# ссылки на базу или тома ПРАКТИКИ — худший возможный исход этой
+# работы — уронить работающий продукт соседа.
+name: simpasid
+
+services:
+  app:
+    container_name: simpasid-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Своя база, свой пользователь, своя сеть. Строка подключения
+      # указывает на службу этого же проекта Compose.
+      DATABASE_URL: postgresql://simpasid:${SIMPASID_DB_PASSWORD:?нужен пароль базы}@postgres:5432/simpasid
+      ISSUER: https://auth.cmpas.ru
+      PORT: "3000"
+      HOST: 0.0.0.0
+      KEYS_DIR: /var/lib/simpasid/keys
+      MAIL_ENDPOINT: ${MAIL_ENDPOINT:-}
+      MAIL_TOKEN: ${MAIL_TOKEN:-}
+    ports:
+      # ТОЛЬКО на петлю: наружу сервис выходит через nginx на хосте,
+      # тем же способом, каким уже опубликованы cmpas.ru и moments.
+      - "127.0.0.1:3100:3000"
+    volumes:
+      # Ключи подписи переживают перезапуск и пересборку образа.
+      # Их потеря разлогинила бы всех разом.
+      - simpasid_keys:/var/lib/simpasid
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: simpasid-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: simpasid
+      POSTGRES_PASSWORD: ${SIMPASID_DB_PASSWORD:?нужен пароль базы}
+      POSTGRES_DB: simpasid
+    volumes:
+      - simpasid_db:/var/lib/postgresql/data
+    # Порт наружу не публикуется вовсе: база доступна только службам
+    # этого проекта.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simpasid -d simpasid"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    mem_limit: 512m
+    memswap_limit: 512m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+# Свои именованные тома. Имена уникальны в пределах проекта simpasid и
+# ни с чем у соседа не пересекаются.
+volumes:
+  simpasid_db:
+  simpasid_keys:

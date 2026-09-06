@@ -1,0 +1,76 @@
+name: Сборка и проверки
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Тесты и типы
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: simpasid
+          POSTGRES_PASSWORD: simpasid
+          POSTGRES_DB: simpasid_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U simpasid -d simpasid_test"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgres://simpasid:simpasid@127.0.0.1:5433/simpasid_test
+      ISSUER: https://auth.cmpas.ru
+      KEYS_DIR: /tmp/simpasid-keys
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+
+      - name: Установка
+        run: |
+          npm ci --prefix server
+          npm ci --prefix portal
+          npm ci --prefix devsite
+          npm ci --prefix packages/id-client
+
+      - name: Типы
+        run: |
+          npm run typecheck --prefix server
+          npm run typecheck --prefix portal
+          npm run typecheck --prefix devsite
+          npm run typecheck --prefix packages/id-client
+
+      # Портал собирается ДО серверных тестов: они проверяют, что
+      # собранный портал отдаётся по адресам из оболочки.
+      - name: Сборка портала
+        run: npm run build --prefix portal
+
+      - name: Тесты сервера
+        run: npm test --prefix server
+
+      - name: Тесты портала
+        run: npm test --prefix portal
+
+      - name: Тесты ресурса разработчика
+        run: npm test --prefix devsite
+
+      - name: Тесты SDK и рецептов
+        run: npm test --prefix packages/id-client
+
+  image:
+    name: Образ собирается
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Сборка образа
+        run: docker build -t simpasid:ci --target runner .
+      # Сборка образа — тоже проверка: она ловит расхождение между тем,
+      # что собирается локально, и тем, что уедет на сервер.

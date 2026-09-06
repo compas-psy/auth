@@ -48,6 +48,7 @@ const TITLES: Record<string, string> = {
   EnterCode: "Введите код из письма",
   EmailRequired: "Нужна электронная почта",
   LinkExpired: "Ссылка больше не действует",
+  Unavailable: "Вход временно недоступен",
 };
 
 function noScriptBody(screen: string, state: ScreenState): string {
@@ -60,6 +61,15 @@ function noScriptBody(screen: string, state: ScreenState): string {
 <p class="subtitle">${escapeHtml(signIn.subtitle)}</p>
 <p class="provider-notice">${escapeHtml(signIn.providerNotice)}</p>
 ${legalLine(version)}
+</main></div>`;
+  }
+  // Экран C4: человеческий текст, а не техническая ошибка. Отдаётся
+  // разметкой, потому что при нездоровом сервисе скрипт может и
+  // не загрузиться — а сказать человеку, что происходит, надо.
+  if (screen === "Unavailable") {
+    return `<div class="screen"><main class="card" role="alert">
+<h1>${escapeHtml(errors.unavailableTitle)}</h1>
+<p class="subtitle">${escapeHtml(errors.unavailable)}</p>
 </main></div>`;
   }
   if (screen === "LinkExpired") {
