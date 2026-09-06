@@ -6,6 +6,10 @@ import {
 import { writeAudit } from "../../services/audit.js";
 import { getPool } from "../../db/pool.js";
 import { sha256 } from "../../lib/hash.js";
+import { issueEmailCode, verifyEmailCode } from "../../services/emailCode.js";
+import { THROTTLE_SECONDS } from "../../services/magicLink.js";
+import { getAccountProfile } from "../../services/accounts.js";
+import { sendEmailCode } from "../../services/mailer.js";
 
 /**
  * Клиент называет себя заголовком X-Client-Id. Публичному клиенту
@@ -40,6 +44,78 @@ interface LogoutBody { refresh_token?: string }
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   app.addHook("onRequest", async (req, reply) => {
     if (req.url.startsWith("/v1/auth/")) await firstPartyGate(req, reply);
+  });
+
+  /**
+   * Начало входа по коду. ВСЕГДА 202, независимо от того, есть ли такой
+   * аккаунт и не сработала ли пауза: разные ответы превращают ручку в
+   * способ узнать, зарегистрирован ли человек в сервисе психологической
+   * помощи (12_NATIVE_AUTH.md §3.2).
+   */
+  app.post("/v1/auth/email/start", async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      email?: string; device_key?: string; platform?: string; terms_version?: string;
+    };
+    if (!body.email || !body.device_key || !body.platform) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+    const result = await issueEmailCode({
+      email: body.email,
+      deviceKey: body.device_key,
+      platform: body.platform,
+      termsVersion: body.terms_version,
+    });
+    if (!("throttled" in result)) {
+      await sendEmailCode(body.email, result.code);
+    }
+    await writeAudit({ event: "email_start", outcome: "ok", ip: req.ip });
+    return reply.code(202).send({ retry_after_seconds: THROTTLE_SECONDS });
+  });
+
+  /**
+   * Проверка кода. Ответы «неверный код» и «попытки исчерпаны»
+   * одинаковы по форме; время ответа выровнено, чтобы не давать оракула.
+   */
+  app.post("/v1/auth/email/verify", async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      email?: string; code?: string; device_key?: string; platform?: string;
+    };
+    if (!body.email || !body.code || !body.device_key) {
+      return reply.code(400).send({ error: "invalid_request" });
+    }
+    const started = Date.now();
+    const out = await verifyEmailCode({
+      email: body.email, code: body.code, deviceKey: body.device_key,
+    });
+    await evenOutTiming(started);
+
+    if ("error" in out) {
+      await writeAudit({ event: "email_verify", outcome: "fail", ip: req.ip });
+      return out.error === "too_many_attempts"
+        ? reply.code(429).send({ error: "too_many_attempts" })
+        : reply.code(400).send({ error: "invalid_code", attempts_left: out.attemptsLeft });
+    }
+
+    const platform = body.platform ?? "android";
+    const pair = await issueTokens(out.accountId, {
+      deviceKey: body.device_key, platform, client: "app",
+    });
+    const profile = await getAccountProfile(out.accountId);
+    await writeAudit({
+      accountId: out.accountId, event: "login_email_code", outcome: "ok", ip: req.ip,
+    });
+    return reply.send({
+      access_token: pair.access_token,
+      refresh_token: pair.refresh_token,
+      expires_in: pair.expires_in,
+      account: {
+        id: profile?.id,
+        email: profile?.email,
+        email_verified: profile?.emailVerified ?? false,
+        display_name: profile?.displayName ?? null,
+        products: profile?.products ?? [],
+      },
+    });
   });
 
   /**
@@ -111,6 +187,19 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       providers: await availableProviders(platform),
     });
   });
+}
+
+/**
+ * Выравнивание времени ответа. Ответ «неверный код» приходит после
+ * запроса к базе, ответ «попытки исчерпаны» — раньше; разница во
+ * времени сама по себе оракул (12_NATIVE_AUTH.md §2.1).
+ */
+const MIN_VERIFY_MS = 120;
+async function evenOutTiming(startedAt: number): Promise<void> {
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < MIN_VERIFY_MS) {
+    await new Promise((r) => setTimeout(r, MIN_VERIFY_MS - elapsed));
+  }
 }
 
 /** Доступно и снаружи: экран входа спрашивает то же самое. */
