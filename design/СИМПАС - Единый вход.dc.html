@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8" />
+<title>СИМПАС — Единый вход</title>
+<link rel="stylesheet" href="_ds/design-system-66188c07-9b47-4513-950f-4bff1348c44e/tokens/fonts.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap" />
+<style>
+body{margin:0;background:#F7F8F4}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</helmet>
+<div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<div style="max-width:1560px;margin:0 auto;padding:64px 64px 8px">
+  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:12px">СИМПАС · Единый вход · Макеты для утверждения</div>
+  <h1 style="font-size:40px;font-weight:700;color:#142018;margin:0 0 12px;line-height:1.15">Единый вход СИМПАС</h1>
+  <p style="font-size:15px;line-height:1.6;color:#5F6C64;margin:0;max-width:680px">Один экран входа на всю экосистему — ПРАКТИКА, ЗАПИСКИ, МОМЕНТЫ. Версия 1.0 · 06.09.2026. Задание на макеты — ни одной строки production-кода.</p>
+</div>
+
+<!-- ===== A1 — Вход из ПРАКТИКИ ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">A1 · СИМПАС · Вход · Из ПРАКТИКИ</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Экран, открывающийся по кнопке «Войти» в ПРАКТИКЕ. Провайдеры — круглыми кнопками в один ряд; переключатель ниже показывает, что ряд не разваливается при любом числе подключённых.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <button onClick="{{ setA1_4 }}" style="{{ a1Pill4 }}">4 провайдера</button>
+      <button onClick="{{ setA1_2 }}" style="{{ a1Pill2 }}">2 провайдера</button>
+      <button onClick="{{ setA1_1 }}" style="{{ a1Pill1 }}">1 провайдер</button>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:840px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:28px;height:28px;display:block" />
+        <span style="font-size:16px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 36px;font-size:36px;line-height:1.15;font-weight:700;color:#142018;text-align:center">Вход в ПРАКТИКУ</h1>
+      <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:20px;width:100%">
+        <sc-for list="{{ a1Providers }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+            <button style="{{ p.disc }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:12.5px;line-height:1.4;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px;line-height:1.6;color:#5F6C64;max-width:400px">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:28px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:52px;padding:0 18px;border:1px solid #E4E9E3;border-radius:14px;font-size:15px;font-family:inherit;color:#142018;background:#fff;margin-bottom:16px" />
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:28px;padding-top:20px;width:100%">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== A2 — Вход из ЗАПИСОК ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">A2 · СИМПАС · Вход · Из ЗАПИСОК</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Тот же экран, открытый из ЗАПИСОК. Единственное различие с A1 — заголовок.</p>
+  </div>
+  <div style="width:1440px;min-height:840px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:28px;height:28px;display:block" />
+        <span style="font-size:16px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 36px;font-size:36px;line-height:1.15;font-weight:700;color:#142018;text-align:center">Вход в ЗАПИСКИ</h1>
+      <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:20px;width:100%">
+        <sc-for list="{{ providersAll }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+            <button style="{{ p.disc }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:12.5px;line-height:1.4;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px;line-height:1.6;color:#5F6C64;max-width:400px">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:28px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:52px;padding:0 18px;border:1px solid #E4E9E3;border-radius:14px;font-size:15px;font-family:inherit;color:#142018;background:#fff;margin-bottom:16px" />
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:28px;padding-top:20px;width:100%">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== A3 — Вход из МОМЕНТОВ ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">A3 · СИМПАС · Вход · Из МОМЕНТОВ <span style="display:inline-block;border:1px dashed #8A9089;border-radius:999px;padding:2px 10px;font-size:10px;letter-spacing:0;text-transform:none;font-weight:600;color:#8A9089;margin-left:6px;vertical-align:middle">не проверено</span></div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Нарисован по общей схеме. Рабочей копии репозитория МОМЕНТОВ нет — подлежит сверке при чтении кода сервиса.</p>
+  </div>
+  <div style="width:1440px;min-height:840px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:28px;height:28px;display:block" />
+        <span style="font-size:16px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 36px;font-size:36px;line-height:1.15;font-weight:700;color:#142018;text-align:center">Вход в МОМЕНТЫ</h1>
+      <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:20px;width:100%">
+        <sc-for list="{{ providersAll }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+            <button style="{{ p.disc }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:12.5px;line-height:1.4;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px;line-height:1.6;color:#5F6C64;max-width:400px">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:28px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:52px;padding:0 18px;border:1px solid #E4E9E3;border-radius:14px;font-size:15px;font-family:inherit;color:#142018;background:#fff;margin-bottom:16px" />
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:28px;padding-top:20px;width:100%">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== A4 — мобильный веб ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">A4 · СИМПАС · Вход · Мобильный веб (390×844)</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Один столбец, кнопки на всю ширину. Юридическая строка не сворачивается и не превращается в «Подробнее».</p>
+  </div>
+  <div style="width:390px;min-height:844px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);padding:40px 20px;box-sizing:border-box">
+    <div style="display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:28px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:24px;height:24px;display:block" />
+        <span style="font-size:14px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 28px;font-size:26px;line-height:1.2;font-weight:700;color:#142018;text-align:center">Вход в ПРАКТИКУ</h1>
+      <p style="margin:0 0 14px;font-size:12.5px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:10px;width:100%">
+        <sc-for list="{{ providersAll }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:74px">
+            <button style="{{ p.discSm }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:11.5px;line-height:1.3;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:14px 0 0;text-align:center;font-size:12.5px;line-height:1.6;color:#5F6C64">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:24px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:12.5px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:50px;padding:0 16px;border:1px solid #E4E9E3;border-radius:14px;font-size:14px;font-family:inherit;color:#142018;background:#fff;margin-bottom:14px" />
+      <button style="width:100%;height:50px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:24px;padding-top:18px;width:100%">
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== A5 — Android Custom Tab ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">A5 · СИМПАС · Вход · Android (Custom Tab, 360×800)</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Системная строка Custom Tab сверху делает переход в браузер видимым шагом, а не выпадением из приложения.</p>
+  </div>
+  <div style="width:360px;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px rgba(20,32,24,.14);background:#fff">
+    <div style="height:44px;background:#F7F8F4;border-bottom:1px solid #E4E9E3;display:flex;align-items:center;justify-content:space-between;padding:0 14px;box-sizing:border-box">
+      <span style="font-size:12px;color:#5F6C64;font-family:monospace">id.simpas.ru</span>
+      <span style="font-size:16px;color:#5F6C64;line-height:1">×</span>
+    </div>
+    <div style="padding:32px 18px;min-height:756px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:26px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:22px;height:22px;display:block" />
+        <span style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 24px;font-size:24px;line-height:1.2;font-weight:700;color:#142018;text-align:center">Вход в ПРАКТИКУ</h1>
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:8px;width:100%">
+        <sc-for list="{{ providersAll }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:68px">
+            <button style="{{ p.discXs }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:11px;line-height:1.3;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:12px 0 0;text-align:center;font-size:11.5px;line-height:1.6;color:#5F6C64">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:20px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 10px;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:11.5px;font-weight:600;color:#142018;margin-bottom:6px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:46px;padding:0 14px;border:1px solid #E4E9E3;border-radius:13px;font-size:13px;font-family:inherit;color:#142018;background:#fff;margin-bottom:12px" />
+      <button style="width:100%;height:46px;background:#1D4735;color:#fff;border:none;border-radius:13px;font-size:13px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:20px;padding-top:16px;width:100%">
+        <p style="margin:0;font-size:11.5px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== B1 — Почта: адрес введён ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">B1 · СИМПАС · Почта · Адрес введён, отправка</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Момент перед отправкой ссылки. Второй кадр — ошибка написания адреса, до обращения к серверу.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <button onClick="{{ setB1Normal }}" style="{{ b1PillNormal }}">Обычное</button>
+      <button onClick="{{ setB1Error }}" style="{{ b1PillError }}">Ошибка адреса</button>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:840px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:40px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:28px;height:28px;display:block" />
+        <span style="font-size:16px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 36px;font-size:36px;line-height:1.15;font-weight:700;color:#142018;text-align:center">Вход в ПРАКТИКУ</h1>
+      <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:20px;width:100%">
+        <sc-for list="{{ providersAll }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+            <button style="{{ p.disc }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:12.5px;line-height:1.4;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:16px 0 0;text-align:center;font-size:13px;line-height:1.6;color:#5F6C64;max-width:400px">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:28px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" value="taniya.v@ya" readOnly="{{ true }}" style="{{ b1InputStyle }}" />
+      <sc-if value="{{ b1Error }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:0 0 16px;font-size:13px;color:#B24B3F;align-self:flex-start">Проверьте написание адреса.</p>
+      </sc-if>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:28px;padding-top:20px;width:100%">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== B2 — Проверьте почту ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">B2 · СИМПАС · Почта · «Проверьте почту»</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Текст дословно из 02_SIMPASID.md §7.2. Таймер повторной отправки — 60 секунд.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <button onClick="{{ setB2Active }}" style="{{ b2PillActive }}">Таймер активен</button>
+      <button onClick="{{ setB2Expired }}" style="{{ b2PillExpired }}">Таймер истёк</button>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:640px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Проверьте почту</h2>
+      <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Мы отправили ссылку для входа на t…v@ya.ru. Ссылка действует 15 минут и открывается один раз.</p>
+      <button style="{{ b2ResendStyle }}" disabled="{{ !b2Expired }}">
+        <sc-if value="{{ b2Expired }}" hint-placeholder-val="{{ false }}">Отправить снова</sc-if>
+        <sc-if value="{{ !b2Expired }}" hint-placeholder-val="{{ true }}">Отправить снова · 47 с</sc-if>
+      </button>
+      <p style="margin:20px 0 8px;font-size:12.5px;line-height:1.6;color:#8A9089;text-align:center">Письма нет? Загляните в «Спам» или измените адрес.</p>
+      <button style="background:transparent;border:none;color:#285B46;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline;padding:4px">Изменить адрес</button>
+    </div>
+  </div>
+</section>
+
+</div><div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== C1 — Возврат от провайдера, успех ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">C1 · СИМПАС · Возврат от провайдера · Успех</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Кратковременный переходный экран сразу после согласия у провайдера, до попадания в продукт.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <span style="padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:600;background:#1D4735;color:#fff">Новый аккаунт</span>
+      <span style="padding:8px 14px;border-radius:999px;font-size:12.5px;font-weight:600;color:#5F6C64">Существующий</span>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:520px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center">
+      <div style="width:36px;height:36px;border-radius:999px;border:3px solid #E4E9E3;borderTopColor:#1D4735;border-top-color:#1D4735;animation:spin 1s linear infinite;margin-bottom:24px"></div>
+      <h2 style="margin:0 0 10px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Аккаунт СИМПАС создан</h2>
+      <p style="margin:0;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Переходим в ПРАКТИКУ.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== C2 — провайдер не отдал почту ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">C2 · СИМПАС · Возврат от провайдера · Почта не отдана</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Обязателен инвариантом И-5: у аккаунта всегда должна быть подтверждённая почта.</p>
+  </div>
+  <div style="width:1440px;min-height:600px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 14px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Нужна электронная почта</h2>
+      <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Яндекс ID не передал подтверждённый адрес почты. Почта нужна, чтобы вы могли войти, даже если доступ к Яндекс ID пропадёт.</p>
+      <label style="display:block;align-self:flex-start;font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:52px;padding:0 18px;border:1px solid #E4E9E3;border-radius:14px;font-size:15px;font-family:inherit;color:#142018;background:#fff;margin-bottom:16px" />
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Получить ссылку для подтверждения</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== C3 — аккаунт провайдера уже привязан ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">C3 · СИМПАС · Возврат от провайдера · Аккаунт уже привязан</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Один аккаунт провайдера не может быть привязан к двум аккаунтам СИМПАС.</p>
+  </div>
+  <div style="width:1440px;min-height:560px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 14px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Этот способ уже используется</h2>
+      <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Аккаунт Яндекс ID уже привязан к другому аккаунту СИМПАС. Войдите в тот аккаунт или используйте почту.</p>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:12px">Войти по почте</button>
+      <button style="background:transparent;border:none;color:#285B46;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline;padding:4px">Попробовать другой способ входа</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== C4 — вход недоступен ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">C4 · СИМПАС · Вход временно недоступен</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Второй кадр — для ЗАПИСОК, где локальные заметки продолжают работать без сети.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <button onClick="{{ setC4Base }}" style="{{ c4PillBase }}">Базовое</button>
+      <button onClick="{{ setC4Notes }}" style="{{ c4PillNotes }}">Для ЗАПИСОК</button>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:520px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 14px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Вход временно недоступен</h2>
+      <p style="margin:0;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Мы уже чиним. Попробуйте через несколько минут.</p>
+      <sc-if value="{{ c4Notes }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:16px 0 0;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Заметки на этом устройстве работают как обычно.</p>
+      </sc-if>
+    </div>
+  </div>
+</section>
+
+</div><div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== D1 — рекламное согласие, вариант Б ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">D1 · СИМПАС · Рекламное согласие · Вариант Б — отдельный шаг</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Показывается один раз сразу после создания аккаунта. Оба переключателя выключены — единственное исходное состояние.</p>
+  </div>
+  <div style="width:1440px;min-height:640px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#2F7A4F;margin-bottom:16px">Аккаунт создан</div>
+      <h2 style="margin:0 0 24px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Что вам присылать?</h2>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Новости, новые возможности и предложения СИМПАС.</p>
+      <div style="display:flex;flex-direction:column;gap:1px;width:100%;border:1px solid #E4E9E3;border-radius:12px;overflow:hidden;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#fff">
+          <span style="font-size:15px;color:#142018">Письма</span>
+          <div style="width:42px;height:24px;border-radius:999px;background:#E4E9E3;position:relative"><div style="width:18px;height:18px;border-radius:999px;background:#fff;position:absolute;top:3px;left:3px;box-shadow:0 1px 2px rgba(20,32,24,.2)"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:#fff;border-top:1px solid #E4E9E3">
+          <span style="font-size:15px;color:#142018">Уведомления в приложении</span>
+          <div style="width:42px;height:24px;border-radius:999px;background:#E4E9E3;position:relative"><div style="width:18px;height:18px;border-radius:999px;background:#fff;position:absolute;top:3px;left:3px;box-shadow:0 1px 2px rgba(20,32,24,.2)"></div></div>
+        </div>
+      </div>
+      <p style="margin:0 0 28px;font-size:13px;line-height:1.6;color:#8A9089;text-align:center">Письма о записи, оплате и безопасности приходят всегда: это не реклама, отключить их нельзя.</p>
+      <div style="display:flex;gap:12px;width:100%">
+        <button style="flex:1;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Продолжить</button>
+        <button style="flex:1;height:52px;background:#fff;color:#1D4735;border:1px solid #E4E9E3;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Не сейчас</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== D2 — рекламное согласие, вариант А ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">D2 · СИМПАС · Рекламное согласие · Вариант А — в форме входа</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Переключатели встроены в форму почты. Риск: рядом с четырьмя кнопками провайдеров они могут читаться как часть входа — критерий проверяется на живых людях.</p>
+  </div>
+  <div style="width:1440px;min-height:960px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:28px;height:28px;display:block" />
+        <span style="font-size:16px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+      </div>
+      <h1 style="margin:0 0 28px;font-size:30px;line-height:1.15;font-weight:700;color:#142018;text-align:center">Вход в ПРАКТИКУ</h1>
+      <p style="margin:0 0 16px;font-size:13px;font-weight:600;color:#142018;text-align:center">Вход через:</p>
+      <div style="display:flex;justify-content:center;gap:20px;width:100%">
+        <sc-for list="{{ providersAll }}" as="p" hint-placeholder-count="4">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+            <button style="{{ p.disc }}" aria-label="{{ p.label }}"></button>
+            <span style="font-size:12.5px;line-height:1.4;color:#5F6C64;text-align:center">{{ p.short }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:20px 0 0;text-align:center;font-size:13px;line-height:1.6;color:#5F6C64;max-width:400px">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</p>
+      <div style="position:relative;text-align:center;margin:20px 0;width:100%">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+        <span style="position:relative;background:#FFFFFF;padding:0 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+      </div>
+      <label style="display:block;align-self:flex-start;font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</label>
+      <input type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;height:52px;padding:0 18px;border:1px solid #E4E9E3;border-radius:14px;font-size:15px;font-family:inherit;color:#142018;background:#fff;margin-bottom:20px" />
+      <div style="width:100%;background:#EAF0ED;border-radius:12px;padding:16px 18px;margin-bottom:20px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#142018">Также присылать (по желанию)</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
+          <span style="font-size:14px;color:#142018">Письма</span>
+          <div style="width:38px;height:22px;border-radius:999px;background:#E4E9E3;position:relative"><div style="width:16px;height:16px;border-radius:999px;background:#fff;position:absolute;top:3px;left:3px"></div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0">
+          <span style="font-size:14px;color:#142018">Уведомления в приложении</span>
+          <div style="width:38px;height:22px;border-radius:999px;background:#E4E9E3;position:relative"><div style="width:16px;height:16px;border-radius:999px;background:#fff;position:absolute;top:3px;left:3px"></div></div>
+        </div>
+      </div>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Получить ссылку для входа</button>
+      <div style="border-top:1px solid #E4E9E3;margin-top:24px;padding-top:18px;width:100%">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</a>. Как мы обращаемся с данными — в <a href="#" style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</a>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== E1 — активация профессионального профиля ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">E1 · СИМПАС · Активация профессионального профиля</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Акцепт Профессионального пользовательского соглашения — кнопкой, а не чекбоксом.</p>
+  </div>
+  <div style="width:1440px;min-height:520px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Профессиональный профиль</h2>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Расширенные возможности для практикующих специалистов: карточки клиентов, структурированные заметки о сеансах, приём оплаты.</p>
+      <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Активируя, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Профессиональное пользовательское соглашение</a>.</p>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Активировать профессиональный режим</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== F1 — первое подключение ПРАКТИКИ ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">F1 · СИМПАС · Первое подключение ПРАКТИКИ</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Текст дословно из ТЗ §4.7.</p>
+  </div>
+  <div style="width:1440px;min-height:480px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:.04em;color:#1D4735;text-align:center">ПРАКТИКА</h2>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Расписание, онлайн-запись, карточки клиентов, заметки о сеансах.</p>
+      <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Начиная работу, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Особые условия ПРАКТИКИ</a>.</p>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Начать работу в ПРАКТИКЕ</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== F2 — первое подключение ЗАПИСОК ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">F2 · СИМПАС · Первое подключение ЗАПИСОК</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Ни слова о шифровании и ключах — это принадлежит отдельным экранам ЗАПИСОК (§0.1).</p>
+  </div>
+  <div style="width:1440px;min-height:480px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:.04em;color:#1D4735;text-align:center">ЗАПИСКИ</h2>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Личные заметки и дневник — только ваши.</p>
+      <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Начиная работу, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Особые условия ЗАПИСОК</a>.</p>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Начать работу в ЗАПИСКАХ</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== F3 — первое подключение МОМЕНТОВ ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">F3 · СИМПАС · Первое подключение МОМЕНТОВ <span style="display:inline-block;border:1px dashed #8A9089;border-radius:999px;padding:2px 10px;font-size:10px;letter-spacing:0;text-transform:none;font-weight:600;color:#8A9089;margin-left:6px;vertical-align:middle">не проверено</span></div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Нарисован по общей схеме — подлежит сверке, когда репозиторий МОМЕНТОВ будет прочитан.</p>
+  </div>
+  <div style="width:1440px;min-height:480px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:.04em;color:#1D4735;text-align:center">МОМЕНТЫ</h2>
+      <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Короткие практики и медитации.</p>
+      <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Начиная работу, вы принимаете <a href="#" style="color:#285B46;text-decoration:underline">Особые условия МОМЕНТОВ</a>.</p>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Начать работу в МОМЕНТАХ</button>
+    </div>
+  </div>
+</section>
+
+</div><div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== G1 — заверение перед первым клиентом ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">G1 · СИМПАС · Заверение перед первым клиентом</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Единственный обязательный чекбокс во всём задании. Формулировка дословна (CMPAS_LEGAL_IMPLEMENTATION.md §6.3), галка не предустановлена.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <button onClick="{{ setG1Off }}" style="{{ g1PillOff }}">Галка снята</button>
+      <button onClick="{{ setG1On }}" style="{{ g1PillOn }}">Галка стоит</button>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:560px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:460px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 24px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Перед первым клиентом</h2>
+      <div style="display:flex;gap:12px;align-items:flex-start;width:100%;margin-bottom:16px;cursor:pointer" onClick="{{ toggleG1 }}">
+        <div style="{{ g1BoxStyle }}">
+          <sc-if value="{{ g1Checked }}" hint-placeholder-val="{{ false }}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </sc-if>
+        </div>
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#142018">Я подтверждаю, что являюсь оператором персональных данных своих клиентов и располагаю необходимыми правовыми основаниями для их обработки и передачи ПРАКТИКЕ для обработки по моему поручению.</p>
+      </div>
+      <div style="width:100%;background:#EAF0ED;border-radius:12px;padding:16px 18px;margin-bottom:28px">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64"><strong style="color:#142018">Что это значит:</strong> карточки клиентов, анкеты и записи о сеансах — ваши данные, а не наши. ПРАКТИКА хранит их по вашему поручению и не использует ни для чего другого.</p>
+      </div>
+      <button style="{{ g1ButtonStyle }}" disabled="{{ !g1Checked }}">Продолжить</button>
+    </div>
+  </div>
+</section>
+
+</div><div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:40px">
+
+<!-- ===== H1 — новая редакция договора ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">H1 · СИМПАС · Новая редакция договора · Блокирующий повторный акцепт</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Только изменённый документ. Сравнить с H2 — там акцепта нет вовсе.</p>
+  </div>
+  <div style="width:1440px;min-height:560px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Пользовательское соглашение изменилось</h2>
+      <p style="margin:0 0 20px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Редакция 1.0 действует с 15 сентября 2026 года.</p>
+      <div style="width:100%;border:1px dashed #E2DDD4;border-radius:12px;padding:16px 18px;margin-bottom:24px">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#142018">Что изменилось:</p>
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#8A9089;font-style:italic">‹заглушка: перечень формируется из данных о версии›</p>
+      </div>
+      <button style="width:100%;height:48px;background:#fff;color:#1D4735;border:1px solid #E4E9E3;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:12px">Посмотреть новую редакцию</button>
+      <button style="width:100%;height:52px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer">Принять и продолжить</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== H2 — новая редакция Политики ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">H2 · СИМПАС · Новая редакция Политики · Уведомление</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Политика — информационный документ. Без чекбокса, без блокировки.</p>
+  </div>
+  <div style="width:1440px;min-height:440px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Мы обновили Политику обработки персональных данных</h2>
+      <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#5F6C64;text-align:center">Действует редакция 1.0 с 15 сентября 2026 года. Принимать её не нужно — это информационный документ.</p>
+      <div style="display:flex;gap:12px;width:100%">
+        <button style="flex:1;height:48px;background:#fff;color:#1D4735;border:1px solid #E4E9E3;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">Посмотреть</button>
+        <button style="flex:1;height:48px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">Понятно</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== I1 — Настройки → Способы входа ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">I1 · СИМПАС · Настройки → Способы входа</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0 0 18px;max-width:640px;margin-left:auto;margin-right:auto">Без строки про пароль хранилища — она принадлежит ЗАПИСКАМ.</p>
+    <div style="display:inline-flex;gap:4px;padding:3px;background:#EAF0ED;border-radius:12px">
+      <button onClick="{{ setI1Two }}" style="{{ i1PillTwo }}">Почта + провайдер</button>
+      <button onClick="{{ setI1One }}" style="{{ i1PillOne }}">Только почта</button>
+    </div>
+  </div>
+  <div style="width:1440px;min-height:480px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:560px;display:flex;flex-direction:column">
+      <h2 style="margin:0 0 24px;font-size:24px;line-height:1.25;font-weight:700;color:#142018">Аккаунт СИМПАС</h2>
+      <div style="border:1px solid #E4E9E3;border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#fff">
+          <div>
+            <div style="font-size:15px;color:#142018;margin-bottom:2px">Почта</div>
+            <div style="font-size:13px;color:#8A9089">t…v@ya.ru</div>
+          </div>
+          <button style="background:transparent;border:none;color:#285B46;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">Изменить почту</button>
+        </div>
+        <sc-if value="{{ i1Two }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#fff;border-top:1px solid #E4E9E3">
+            <div>
+              <div style="font-size:15px;color:#142018;margin-bottom:2px">Яндекс ID</div>
+              <div style="font-size:13px;color:#8A9089">привязан 12 марта</div>
+            </div>
+            <button style="background:transparent;border:none;color:#B24B3F;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">Отвязать</button>
+          </div>
+        </sc-if>
+      </div>
+      <button style="align-self:flex-start;margin-top:16px;background:transparent;border:none;color:#285B46;font-size:14px;font-weight:600;cursor:pointer;text-decoration:underline">Привязать другой способ</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== I2 — отвязка провайдера, подтверждение ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">I2 · СИМПАС · Отвязка провайдера · Подтверждение</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Возможно только когда остаётся другой способ входа — см. I3 для отказа.</p>
+  </div>
+  <div style="width:1440px;min-height:440px;background:#F2F4EF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:380px;background:#fff;border-radius:16px;box-shadow:0 14px 34px rgba(20,32,24,.10);padding:28px;display:flex;flex-direction:column;align-items:center">
+      <h2 style="margin:0 0 12px;font-size:20px;line-height:1.25;font-weight:700;color:#142018;text-align:center">Отвязать Яндекс ID?</h2>
+      <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#5F6C64;text-align:center">Вы сможете войти только по почте, пока не привяжете другой способ.</p>
+      <div style="display:flex;gap:12px;width:100%">
+        <button style="flex:1;height:46px;background:#fff;color:#1D4735;border:1px solid #E4E9E3;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">Отмена</button>
+        <button style="flex:1;height:46px;background:#B24B3F;color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer">Отвязать</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== I3 — попытка отвязать последний способ, отказ ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">I3 · СИМПАС · Попытка отвязать последний способ · Отказ</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:640px;margin-left:auto;margin-right:auto">Отказ приходит от сервера — кадр существует, это не просто неактивная кнопка.</p>
+  </div>
+  <div style="width:1440px;min-height:480px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+    <div style="width:100%;max-width:560px;display:flex;flex-direction:column">
+      <h2 style="margin:0 0 24px;font-size:24px;line-height:1.25;font-weight:700;color:#142018">Аккаунт СИМПАС</h2>
+      <div style="border:1px solid #E4E9E3;border-radius:12px;overflow:hidden;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:#fff">
+          <div>
+            <div style="font-size:15px;color:#142018;margin-bottom:2px">Почта</div>
+            <div style="font-size:13px;color:#8A9089">t…v@ya.ru</div>
+          </div>
+          <button style="background:transparent;border:none;color:#285B46;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">Изменить почту</button>
+        </div>
+      </div>
+      <div style="background:#EAF0ED;border:1px solid #E2DDD4;border-radius:12px;padding:14px 18px">
+        <p style="margin:0;font-size:13px;line-height:1.6;color:#B24B3F">Почта — запасной способ входа. Её можно изменить, но не удалить.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div></x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { a1Count: 4, b1Error: false, b2Expired: false, c4Notes: false, g1Checked: false, i1Two: true };
+
+  pill(active) {
+    return { padding: '8px 14px', borderRadius: 999, fontSize: '12.5px', fontWeight: 600, border: 'none', cursor: 'pointer', background: active ? '#1D4735' : 'transparent', color: active ? '#FFFFFF' : '#5F6C64' };
+  }
+
+  renderVals() {
+    const s = this.state;
+    // Все четыре знака нормализованы по bounding box, поэтому размер задаётся один раз для всех:
+    // круглая кнопка 56px (мобильные 48/44), знак внутри — 46% диаметра
+    const disc = (size, logo) => ({ width: size, height: size, borderRadius: 999, background: '#FFFFFF', border: '1px solid #E4E9E3', boxShadow: '0 1px 2px rgba(20,32,24,.04)', backgroundImage: 'url(' + logo + ')', backgroundSize: String(Math.round(size * 0.46)) + 'px', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', cursor: 'pointer', flexShrink: 0, padding: 0 });
+    const brand = [
+      { id: 'ya', label: 'Войти через Яндекс ID', short: 'Яндекс ID', logo: 'assets/yandex-id.png' },
+      { id: 'tid', label: 'Войти через T-ID', short: 'T-ID', logo: 'assets/t-id.svg' },
+      { id: 'sber', label: 'Войти через Сбер ID', short: 'Сбер ID', logo: 'assets/sber-mark.png' },
+      { id: 'vk', label: 'Войти через VK ID', short: 'VK ID', logo: 'assets/vk-id-blue.svg' },
+    ];
+    const providersAll = brand.map(b => ({
+      ...b,
+      disc: disc(56, b.logo),
+      discSm: disc(48, b.logo),
+      discXs: disc(44, b.logo),
+    }));
+    return {
+      providersAll,
+      a1Providers: providersAll.slice(0, s.a1Count),
+      a1Pill4: this.pill(s.a1Count === 4),
+      a1Pill2: this.pill(s.a1Count === 2),
+      a1Pill1: this.pill(s.a1Count === 1),
+      setA1_4: () => this.setState({ a1Count: 4 }),
+      setA1_2: () => this.setState({ a1Count: 2 }),
+      setA1_1: () => this.setState({ a1Count: 1 }),
+
+      b1Error: s.b1Error,
+      b1PillNormal: this.pill(!s.b1Error),
+      b1PillError: this.pill(s.b1Error),
+      setB1Normal: () => this.setState({ b1Error: false }),
+      setB1Error: () => this.setState({ b1Error: true }),
+      b1InputStyle: { width: '100%', boxSizing: 'border-box', height: 52, padding: '0 18px', border: s.b1Error ? '1px solid #B24B3F' : '1px solid #E4E9E3', borderRadius: 14, fontSize: 15, fontFamily: 'inherit', color: '#142018', background: '#fff', marginBottom: s.b1Error ? 8 : 16 },
+
+      b2Expired: s.b2Expired,
+      b2PillActive: this.pill(!s.b2Expired),
+      b2PillExpired: this.pill(s.b2Expired),
+      setB2Active: () => this.setState({ b2Expired: false }),
+      setB2Expired: () => this.setState({ b2Expired: true }),
+      b2ResendStyle: s.b2Expired
+        ? { width: '100%', height: 48, background: '#FFFFFF', color: '#1D4735', border: '1px solid #E4E9E3', borderRadius: 14, fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+        : { width: '100%', height: 48, background: '#F2F4EF', color: '#8A9089', border: '1px solid #E4E9E3', borderRadius: 14, fontSize: 14, fontWeight: 600, cursor: 'not-allowed' },
+
+      c4Notes: s.c4Notes,
+      c4PillBase: this.pill(!s.c4Notes),
+      c4PillNotes: this.pill(s.c4Notes),
+      setC4Base: () => this.setState({ c4Notes: false }),
+      setC4Notes: () => this.setState({ c4Notes: true }),
+
+      g1Checked: s.g1Checked,
+      toggleG1: () => this.setState(st => ({ g1Checked: !st.g1Checked })),
+      g1ButtonStyle: { width: '100%', height: 52, background: s.g1Checked ? '#1D4735' : '#EAF0ED', color: s.g1Checked ? '#FFFFFF' : '#5F6C64', border: s.g1Checked ? 'none' : '1px solid #E4E9E3', borderRadius: 14, fontSize: 15, fontWeight: 600, cursor: s.g1Checked ? 'pointer' : 'not-allowed' },
+      g1BoxStyle: { width: 22, height: 22, borderRadius: 6, border: s.g1Checked ? '1px solid #1D4735' : '1px solid #E4E9E3', background: s.g1Checked ? '#1D4735' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', marginTop: 2 },
+      g1PillOff: this.pill(!s.g1Checked),
+      g1PillOn: this.pill(s.g1Checked),
+      setG1Off: () => this.setState({ g1Checked: false }),
+      setG1On: () => this.setState({ g1Checked: true }),
+
+      i1Two: s.i1Two,
+      i1PillTwo: this.pill(s.i1Two),
+      i1PillOne: this.pill(!s.i1Two),
+      setI1Two: () => this.setState({ i1Two: true }),
+      setI1One: () => this.setState({ i1Two: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

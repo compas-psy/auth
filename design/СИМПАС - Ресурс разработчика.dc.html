@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta charset="utf-8" />
+<title>СИМПАС — Ресурс разработчика</title>
+<link rel="stylesheet" href="_ds/design-system-66188c07-9b47-4513-950f-4bff1348c44e/tokens/fonts.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;display=swap" />
+<style>
+body{margin:0;background:#F7F8F4}
+</style>
+</helmet>
+<div style="font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#F7F8F4;padding-bottom:80px">
+
+<div style="max-width:1560px;margin:0 auto;padding:64px 64px 8px">
+  <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:12px">СИМПАС · Ресурс разработчика · Группа R</div>
+  <h1 style="font-size:40px;font-weight:700;color:#142018;margin:0 0 12px;line-height:1.15">Ресурс разработчика</h1>
+  <p style="font-size:15px;line-height:1.6;color:#5F6C64;margin:0;max-width:720px">Отдельный контур: тем же публичным API работают и продукты, и портал аккаунта — внутреннего пути нет. Показатель качества ресурса один — время до первого успешного вызова.</p>
+</div>
+
+<!-- ===== R1 — титульная ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">R1 · СИМПАС · Ресурс разработчика · Титульная</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:680px;margin-left:auto;margin-right:auto">Первый экран отвечает на один вопрос: как сделать первый успешный вызов. Всё остальное — ниже и во вкладках.</p>
+  </div>
+  <div style="width:1440px;min-height:900px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);overflow:hidden">
+    <div style="background:#1D4735;padding:20px 40px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:24px;height:24px;display:block" />
+        <span style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#FFFFFF">СИМПАС</span>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.72);margin-left:6px">для разработчиков</span>
+      </div>
+      <div style="display:flex;gap:26px;align-items:center">
+        <a href="#" style="font-size:13px;font-weight:600;color:#FFFFFF;text-decoration:none">Начать</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Справочник</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Спецификация</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Изменения</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Статус</a>
+      </div>
+    </div>
+    <div style="max-width:1000px;margin:0 auto;padding:56px 40px 64px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1D4735;background:#EAF0ED;border-radius:999px;padding:5px 12px">версия 1</span>
+        <span style="font-size:12.5px;color:#5F6C64">обновлено 6 сентября 2026</span>
+      </div>
+      <h1 style="margin:0 0 14px;font-size:36px;line-height:1.15;font-weight:700;color:#142018">API аккаунта СИМПАС</h1>
+      <p style="margin:0 0 36px;font-size:15px;line-height:1.6;color:#5F6C64;max-width:620px">Профиль и почты, способы входа, устройства и сеансы, согласия и коммуникации, журнал событий. Портал аккаунта работает этим же API — расхождений между продуктами не возникает.</p>
+      <div style="display:grid;grid-template-columns:1.25fr 1fr;gap:28px;align-items:start;margin-bottom:44px">
+        <div style="background:#142018;border-radius:14px;padding:24px 26px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9089;margin-bottom:14px">Первый запрос</div>
+          <pre style="margin:0 0 18px;font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.7;color:#EAF0ED;white-space:pre-wrap">curl https://api.simpas.ru/v1/account \
+  -H "Authorization: Bearer &lt;ваш ключ&gt;"</pre>
+          <div style="border-top:1px solid rgba(234,240,237,.14);padding-top:16px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9089;margin-bottom:10px">Ответ</div>
+            <pre style="margin:0;font-family:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.7;color:#C7D8CD;white-space:pre-wrap">{
+  "id": "acc_8f21…",
+  "email": "t…v@ya.ru",
+  "email_verified": true,
+  "products": ["practice", "notes"]
+}</pre>
+          </div>
+        </div>
+        <div>
+          <p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#5F6C64">Ключ выдаётся в кабинете сервиса. От регистрации до первого успешного ответа — не больше пяти минут: это тот показатель, по которому ресурс и оценивается.</p>
+          <div style="display:flex;gap:12px;margin-bottom:24px">
+            <button style="height:48px;padding:0 22px;background:#1D4735;color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">Начать</button>
+            <button style="height:48px;padding:0 20px;background:#FFFFFF;color:#1D4735;border:1px solid #E4E9E3;border-radius:14px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer">Получить ключ</button>
+          </div>
+          <div style="background:#EAF0ED;border-radius:12px;padding:16px 18px">
+            <div style="font-size:13px;font-weight:700;color:#142018;margin-bottom:6px">Правило, снимающее самодеятельность</div>
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64">Если чего-то нет в спецификации — этого не может быть и на экране. Отдельного внутреннего API для наших собственных интерфейсов не существует.</p>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <a href="#" style="text-decoration:none;background:#FFFFFF;border:1px solid #E4E9E3;border-radius:12px;padding:20px 22px;display:block">
+          <div style="font-size:15px;font-weight:700;color:#142018;margin-bottom:6px">Спецификация</div>
+          <div style="font-size:13px;line-height:1.5;color:#5F6C64">OpenAPI — единственный источник истины. Справочник собирается из неё, а не пишется руками.</div>
+        </a>
+        <a href="#" style="text-decoration:none;background:#FFFFFF;border:1px solid #E4E9E3;border-radius:12px;padding:20px 22px;display:block">
+          <div style="font-size:15px;font-weight:700;color:#142018;margin-bottom:6px">Ресурсы</div>
+          <div style="font-size:13px;line-height:1.5;color:#5F6C64">Шесть групп: профиль и почты, способы входа, устройства, согласия, журнал, права субъекта.</div>
+        </a>
+        <a href="#" style="text-decoration:none;background:#FFFFFF;border:1px solid #E4E9E3;border-radius:12px;padding:20px 22px;display:block">
+          <div style="font-size:15px;font-weight:700;color:#142018;margin-bottom:6px">Изменения</div>
+          <div style="font-size:13px;line-height:1.5;color:#5F6C64">Версионирование, сроки миграции и уведомление о прекращении поддержки.</div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== R2 — справочник ресурса ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">R2 · СИМПАС · Ресурс разработчика · Справочник</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:680px;margin-left:auto;margin-right:auto">Страница ресурса: слева навигация по группам, в центре описание, справа — запрос и ответ. Страница генерируется из спецификации, поэтому расходиться с реализацией не может.</p>
+  </div>
+  <div style="width:1440px;min-height:900px;background:#FFFFFF;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);overflow:hidden">
+    <div style="background:#1D4735;padding:20px 40px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:24px;height:24px;display:block" />
+        <span style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#FFFFFF">СИМПАС</span>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.72);margin-left:6px">для разработчиков</span>
+      </div>
+      <div style="display:flex;gap:26px;align-items:center">
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Начать</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:#FFFFFF;text-decoration:none">Справочник</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Спецификация</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Изменения</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Статус</a>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:260px 1fr 460px;min-height:820px">
+      <div style="border-right:1px solid #E4E9E3;padding:28px 20px;background:#F7F8F4">
+        <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="6">
+          <div style="margin-bottom:22px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9089;margin-bottom:8px">{{ g.name }}</div>
+            <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+              <div style="{{ it.style }}">{{ it.label }}</div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:36px 40px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <span style="font-family:'Geist Mono',ui-monospace,monospace;font-size:11px;font-weight:600;color:#FFFFFF;background:#2F5D50;border-radius:6px;padding:5px 9px">GET</span>
+          <span style="font-family:'Geist Mono',ui-monospace,monospace;font-size:14px;color:#142018">/v1/account/sessions</span>
+        </div>
+        <h2 style="margin:0 0 12px;font-size:24px;line-height:1.25;font-weight:700;color:#142018">Устройства и сеансы</h2>
+        <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5F6C64">Список активных сеансов аккаунта. Возвращает огрублённые сведения об устройстве — семейство платформы и браузера без версии. IP-адрес и точное устройство не хранятся и не отдаются.</p>
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9089;margin-bottom:10px">Поля ответа</div>
+        <div style="border:1px solid #E4E9E3;border-radius:12px;overflow:hidden;margin-bottom:28px">
+          <sc-for list="{{ fields }}" as="fl" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:180px 96px 1fr;gap:12px;padding:14px 16px;border-bottom:1px solid #E4E9E3;align-items:start">
+              <span style="font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:#142018">{{ fl.name }}</span>
+              <span style="font-size:12.5px;color:#8A9089">{{ fl.type }}</span>
+              <span style="font-size:13px;line-height:1.5;color:#5F6C64">{{ fl.desc }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#EAF0ED;border-radius:12px;padding:16px 18px">
+          <div style="font-size:13px;font-weight:700;color:#142018;margin-bottom:6px">Границы, заданные схемой</div>
+          <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64">Полей телефона, одноразового кода и пароля в API нет и не появится: они запрещены инвариантом на уровне схемы и защищены тестом.</p>
+        </div>
+      </div>
+      <div style="background:#142018;padding:36px 32px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9089;margin-bottom:12px">Запрос</div>
+        <pre style="margin:0 0 26px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.7;color:#EAF0ED;white-space:pre-wrap">curl https://api.simpas.ru/v1/account/sessions \
+  -H "Authorization: Bearer &lt;ваш ключ&gt;"</pre>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8A9089;margin-bottom:12px">Ответ · 200</div>
+        <pre style="margin:0;font-family:'Geist Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.7;color:#C7D8CD;white-space:pre-wrap">{
+  "sessions": [
+    {
+      "id": "ses_31af…",
+      "current": true,
+      "platform": "windows",
+      "client": "chrome",
+      "last_seen_at": "2026-09-06T14:20:00Z"
+    },
+    {
+      "id": "ses_77c0…",
+      "current": false,
+      "platform": "android",
+      "client": "app",
+      "last_seen_at": "2026-09-03T09:12:00Z"
+    }
+  ]
+}</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== R3 — журнал изменений ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 0;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">R3 · СИМПАС · Ресурс разработчика · Изменения и прекращение поддержки</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:680px;margin-left:auto;margin-right:auto">Ломающее изменение видно до слияния, а не после. Процедура одна: уведомление — срок миграции — отключение.</p>
+  </div>
+  <div style="width:1440px;min-height:820px;background:#F7F8F4;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);padding:0 0 56px;box-sizing:border-box;overflow:hidden">
+    <div style="background:#1D4735;padding:20px 40px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:24px;height:24px;display:block" />
+        <span style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#FFFFFF">СИМПАС</span>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.72);margin-left:6px">для разработчиков</span>
+      </div>
+      <div style="display:flex;gap:26px;align-items:center">
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Начать</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Справочник</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Спецификация</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:#FFFFFF;text-decoration:none">Изменения</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Статус</a>
+      </div>
+    </div>
+    <div style="max-width:760px;margin:0 auto;padding:44px 24px 0">
+      <h2 style="margin:0 0 12px;font-size:24px;line-height:1.25;font-weight:700;color:#142018">Журнал изменений</h2>
+      <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#5F6C64">Каждая запись говорит, ломает ли изменение существующих потребителей, и до какого числа работает прежнее поведение.</p>
+      <sc-for list="{{ changelog }}" as="c" hint-placeholder-count="3">
+        <div style="background:#FFFFFF;border:1px solid #E4E9E3;border-radius:12px;padding:20px 22px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <span style="{{ c.badgeStyle }}">{{ c.badge }}</span>
+            <span style="font-size:12.5px;color:#8A9089">{{ c.date }}</span>
+            <span style="font-family:'Geist Mono',ui-monospace,monospace;font-size:12.5px;color:#5F6C64">{{ c.version }}</span>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:#142018;margin-bottom:6px">{{ c.title }}</div>
+          <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#5F6C64">{{ c.body }}</p>
+          <sc-if value="{{ c.sunset }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:13px;line-height:1.6;color:#B24B3F">{{ c.sunset }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</section>
+
+<!-- ===== R4 — кабинет и статус ===== -->
+<section style="width:1560px;max-width:100%;margin:0 auto;padding:48px 64px 80px;display:flex;flex-direction:column;align-items:center">
+  <div style="width:100%;max-width:1440px;text-align:center;margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#CC9E50;margin-bottom:8px">R4 · СИМПАС · Ресурс разработчика · Кабинет и статус</div>
+    <p style="font-size:14px;color:#5F6C64;margin:0;max-width:680px;margin-left:auto;margin-right:auto">Где берётся ключ и где видно, что происходит с сервисом. Ключ показывается один раз — второй раз только перевыпуск.</p>
+  </div>
+  <div style="width:1440px;min-height:760px;background:#F7F8F4;border-radius:20px;box-shadow:0 20px 50px rgba(20,32,24,.14);padding:0 0 56px;box-sizing:border-box;overflow:hidden">
+    <div style="background:#1D4735;padding:20px 40px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="assets/simpas-mark.svg" alt="СИМПАС" style="width:24px;height:24px;display:block" />
+        <span style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#FFFFFF">СИМПАС</span>
+        <span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.72);margin-left:6px">для разработчиков</span>
+      </div>
+      <div style="display:flex;gap:26px;align-items:center">
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Начать</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Справочник</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Спецификация</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:rgba(255,255,255,.78);text-decoration:none">Изменения</a>
+        <a href="#" style="font-size:13px;font-weight:600;color:#FFFFFF;text-decoration:none">Статус</a>
+      </div>
+    </div>
+    <div style="max-width:900px;margin:0 auto;padding:44px 24px 0">
+      <h2 style="margin:0 0 28px;font-size:24px;line-height:1.25;font-weight:700;color:#142018">Кабинет</h2>
+      <div style="background:#FFFFFF;border:1px solid #E4E9E3;border-radius:12px;padding:22px 24px;margin-bottom:32px">
+        <div style="font-size:13px;font-weight:600;color:#142018;margin-bottom:12px">Ключ доступа к API</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div style="flex:1;height:48px;border:1px solid #E4E9E3;border-radius:12px;background:#F7F8F4;display:flex;align-items:center;padding:0 16px;font-family:'Geist Mono',ui-monospace,monospace;font-size:13px;color:#5F6C64">sk_live_••••••••••••••••••••8f21</div>
+          <button style="height:48px;padding:0 18px;background:#FFFFFF;color:#1D4735;border:1px solid #E4E9E3;border-radius:12px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer">Перевыпустить</button>
+        </div>
+        <p style="margin:0;font-size:12.5px;line-height:1.6;color:#5F6C64">Полностью ключ виден один раз — при выдаче. Потеряли: перевыпустите, прежний перестанет работать сразу.</p>
+      </div>
+      <h2 style="margin:0 0 20px;font-size:24px;line-height:1.25;font-weight:700;color:#142018">Статус</h2>
+      <div style="border:1px solid #E4E9E3;border-radius:12px;overflow:hidden;background:#FFFFFF;margin-bottom:20px">
+        <sc-for list="{{ statuses }}" as="st" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #E4E9E3">
+            <div>
+              <div style="font-size:15px;color:#142018;margin-bottom:2px">{{ st.name }}</div>
+              <div style="font-size:12.5px;color:#5F6C64">{{ st.note }}</div>
+            </div>
+            <span style="{{ st.chipStyle }}">{{ st.state }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <p style="margin:0;font-size:13px;line-height:1.6;color:#5F6C64">Если вход недоступен, человек видит об этом отдельный экран в продукте, а не пустую страницу: кадр C4 в канвасе «Единый вход».</p>
+    </div>
+  </div>
+</section>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const item = (label, active) => ({ label, style: { fontSize: 13.5, lineHeight: 1.5, padding: '7px 10px', borderRadius: 8, marginBottom: 2, color: active ? '#1D4735' : '#5F6C64', background: active ? '#FFFFFF' : 'transparent', fontWeight: active ? 600 : 400, border: active ? '1px solid #E4E9E3' : '1px solid transparent' } });
+    const badge = (text, breaking) => ({ badge: text, badgeStyle: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em', borderRadius: 999, padding: '5px 10px', color: breaking ? '#B24B3F' : '#1D4735', background: '#EAF0ED' } });
+    const chip = (state, ok) => ({ state, chipStyle: { fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', borderRadius: 999, padding: '5px 12px', color: ok ? '#2F7A4F' : '#B24B3F', background: '#EAF0ED' } });
+    return {
+      navGroups: [
+        { name: 'Начало', items: [item('Первый вызов'), item('Ключи и доступ'), item('Ошибки и повторы')] },
+        { name: 'Аккаунт', items: [item('Профиль'), item('Почты')] },
+        { name: 'Вход', items: [item('Способы входа'), item('Ключи доступа')] },
+        { name: 'Сеансы', items: [item('Устройства и сеансы', true), item('Завершение сеанса')] },
+        { name: 'Согласия', items: [item('Журнал согласий'), item('Коммуникации')] },
+        { name: 'Права субъекта', items: [item('Выгрузка'), item('Удаление аккаунта')] },
+      ],
+      fields: [
+        { name: 'id', type: 'string', desc: 'Идентификатор сеанса. Нужен, чтобы завершить именно его.' },
+        { name: 'current', type: 'boolean', desc: 'Сеанс, из которого сделан запрос. Его нельзя завершить этим методом.' },
+        { name: 'platform', type: 'enum', desc: 'Семейство платформы: windows, macos, android, ios, linux. Без версии.' },
+        { name: 'client', type: 'enum', desc: 'Тип клиента: chrome, safari, firefox, app, other. Без версии.' },
+        { name: 'last_seen_at', type: 'datetime', desc: 'Последняя активность сеанса. Точное время входа, без места.' },
+      ],
+      changelog: [
+        Object.assign({ date: '6 сентября 2026', version: 'v1.4', title: 'Огрублённые сведения об устройстве в сеансах', body: 'Поля platform и client добавлены к сеансам, чтобы экран устройств мог показать «Windows · Chrome» вместо «Устройство №3». Значения без версий, IP по-прежнему не хранится.', sunset: '' }, badge('Добавлено', false)),
+        Object.assign({ date: '18 августа 2026', version: 'v1.3', title: 'Каналы согласий разделены по сервисам', body: 'У согласия появился необязательный product. Прежние записи считаются согласием на всю экосистему и не переписываются.', sunset: '' }, badge('Добавлено', false)),
+        Object.assign({ date: '30 июня 2026', version: 'v1.2', title: 'Единый формат ошибок', body: 'Ответы с ошибкой возвращают code, message и details. Прежний формат с полем error работает до срока ниже.', sunset: 'Прежний формат отключается 1 декабря 2026. Заголовок Sunset приходит в каждом ответе, уведомление потребителям отправлено 30 июня.' }, badge('Ломающее', true)),
+      ],
+      statuses: [
+        Object.assign({ name: 'API аккаунта', note: 'api.simpas.ru/v1 · за сутки 99,98%' }, chip('работает', true)),
+        Object.assign({ name: 'Вход и выдача ссылок', note: 'письма со ссылкой для входа' }, chip('работает', true)),
+        Object.assign({ name: 'Доставка писем', note: 'задержка до 4 минут с 13:40' }, chip('замедлено', false)),
+        Object.assign({ name: 'Справочник и спецификация', note: 'собирается из OpenAPI при каждом выпуске' }, chip('работает', true)),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

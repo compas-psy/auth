@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:490px;height:286px;overflow:hidden;flex-shrink:0;position:relative;font-family:'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
+  <div style="width:1440px;height:840px;transform:scale(0.3403);transform-origin:top left;position:relative">
+    <sc-if value="{{ isLight }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:0;background:#FFFFFF"></div>
+    </sc-if>
+    <sc-if value="{{ isPortal }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:#F7F8F4"></div>
+    </sc-if>
+    <sc-if value="{{ isDialog }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:#F2F4EF"></div>
+    </sc-if>
+
+    <sc-if value="{{ isDialog }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:60px">
+        <div style="width:460px;background:#FFFFFF;border-radius:16px;box-shadow:0 14px 34px rgba(20,32,24,.10);padding:32px">
+          <div style="font-size:22px;line-height:1.25;font-weight:700;color:#142018;margin-bottom:14px">{{ title }}</div>
+          <sc-for list="{{ bodyLines }}" as="line" hint-placeholder-count="2">
+            <div style="font-size:14px;line-height:1.6;color:#5F6C64;margin-bottom:10px">{{ line }}</div>
+          </sc-for>
+          <div style="display:flex;gap:12px;margin-top:22px">
+            <sc-if value="{{ hasSecondary }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;height:46px;border:1px solid #E4E9E3;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#1D4735">{{ secondary }}</div>
+            </sc-if>
+            <div style="flex:1;height:46px;background:#1D4735;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#FFFFFF">{{ primary }}</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCentered }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:60px 24px;box-sizing:border-box">
+        <div style="width:420px;display:flex;flex-direction:column;align-items:center">
+          <sc-if value="{{ mark }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:36px">
+              <img src="assets/simpas-mark.svg" alt="" style="width:28px;height:28px;display:block" />
+              <span style="font-size:16px;font-weight:800;letter-spacing:.12em;color:#1D4735">СИМПАС</span>
+            </div>
+          </sc-if>
+          <div style="{{ titleStyle }}">{{ title }}</div>
+          <sc-for list="{{ bodyLines }}" as="line" hint-placeholder-count="2">
+            <div style="font-size:15px;line-height:1.6;color:#5F6C64;text-align:center;margin-bottom:12px">{{ line }}</div>
+          </sc-for>
+          <sc-if value="{{ providers }}" hint-placeholder-val="{{ true }}">
+            <div style="width:100%;margin-top:12px">
+              <div style="font-size:13px;font-weight:600;color:#142018;text-align:center;margin-bottom:16px">Вход через:</div>
+              <div style="display:flex;justify-content:center;gap:20px">
+                <sc-for list="{{ providerList }}" as="p" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:76px">
+                    <div style="{{ p.disc }}"></div>
+                    <div style="font-size:12.5px;line-height:1.4;color:#5F6C64;text-align:center">{{ p.short }}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:13px;line-height:1.6;color:#5F6C64;text-align:center;margin-top:20px">Провайдер увидит, что вы вошли в СИМПАС, и когда. Что вы делаете в сервисе, он не узнаёт.</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ field }}" hint-placeholder-val="{{ true }}">
+            <div style="width:100%;margin-top:26px">
+              <div style="position:relative;text-align:center;margin-bottom:26px">
+                <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#E4E9E3"></div>
+                <span style="position:relative;background:#FFFFFF;padding:0 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#8A9089">или</span>
+              </div>
+              <div style="font-size:13px;font-weight:600;color:#142018;margin-bottom:8px">Электронная почта</div>
+              <div style="height:52px;border:1px solid #E4E9E3;border-radius:14px;background:#FFFFFF;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#8A9089">{{ fieldValue }}</div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasPrimary }}" hint-placeholder-val="{{ true }}">
+            <div style="width:100%;height:52px;margin-top:16px;background:#1D4735;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:#FFFFFF">{{ primary }}</div>
+          </sc-if>
+          <sc-if value="{{ hasSecondary }}" hint-placeholder-val="{{ false }}">
+            <div style="width:100%;height:48px;margin-top:12px;border:1px solid #E4E9E3;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#1D4735">{{ secondary }}</div>
+          </sc-if>
+          <sc-if value="{{ legal }}" hint-placeholder-val="{{ true }}">
+            <div style="width:100%;margin-top:28px;padding-top:20px;border-top:1px solid #E4E9E3;font-size:13px;line-height:1.6;color:#5F6C64;text-align:center">Продолжая, вы принимаете <span style="color:#285B46;text-decoration:underline">Пользовательское соглашение СИМПАС</span>. Как мы обращаемся с данными — в <span style="color:#285B46;text-decoration:underline">Политике обработки персональных данных</span>.</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPage }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;padding:28px 0;box-sizing:border-box">
+        <div style="max-width:720px;margin:0 auto;padding:0 24px">
+          <div style="font-size:13px;font-weight:600;color:#285B46;margin-bottom:34px">← Вернуться в ПРАКТИКУ</div>
+          <div style="font-size:24px;line-height:1.25;font-weight:700;color:#142018;margin-bottom:22px">{{ title }}</div>
+          <sc-for list="{{ bodyLines }}" as="line" hint-placeholder-count="1">
+            <div style="font-size:15px;line-height:1.6;color:#5F6C64;margin-bottom:14px">{{ line }}</div>
+          </sc-for>
+          <div style="border:1px solid #E4E9E3;border-radius:12px;background:#FFFFFF;overflow:hidden;margin-top:8px">
+            <sc-for list="{{ rowList }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;border-bottom:1px solid #E4E9E3">
+                <div>
+                  <div style="font-size:15px;color:#142018;margin-bottom:2px">{{ r.label }}</div>
+                  <div style="font-size:12.5px;color:#8A9089">{{ r.value }}</div>
+                </div>
+                <sc-if value="{{ r.action }}" hint-placeholder-val="{{ true }}">
+                  <div style="height:38px;padding:0 14px;border:1px solid #E4E9E3;border-radius:12px;display:flex;align-items:center;font-size:13px;font-weight:600;color:#1D4735;white-space:nowrap">{{ r.action }}</div>
+                </sc-if>
+                <sc-if value="{{ r.toggleOff }}" hint-placeholder-val="{{ false }}">
+                  <div style="width:44px;height:26px;border-radius:999px;background:#E4E9E3;position:relative;flex-shrink:0"><div style="width:20px;height:20px;border-radius:999px;background:#FFFFFF;position:absolute;top:3px;left:3px"></div></div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ note }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:22px;font-size:13px;line-height:1.6;color:#5F6C64">{{ note }}</div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:490,&quot;height&quot;:286},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;вход&quot;,&quot;кадр&quot;,&quot;страница&quot;,&quot;диалог&quot;],&quot;default&quot;:&quot;вход&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;title&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Вход в ПРАКТИКУ&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;lines&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;rows&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{label:string,value:string,action?:string,toggleOff?:boolean}[]&quot;},&quot;mark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;providers&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;field&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string|boolean&quot;},&quot;primary&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;secondary&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;legal&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;note&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const kind = p.kind || 'вход';
+    const disc = (logo) => ({ width: 56, height: 56, borderRadius: 999, background: '#EAF0ED', backgroundImage: 'url(' + logo + ')', backgroundSize: '26px', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', border: '1px solid #E4E9E3' });
+    const big = kind === 'вход';
+    return {
+      isLight: kind === 'вход' || kind === 'кадр',
+      isPortal: kind === 'страница',
+      isDialog: kind === 'диалог',
+      isCentered: kind === 'вход' || kind === 'кадр',
+      isPage: kind === 'страница',
+      title: p.title || '',
+      titleStyle: big
+        ? { fontSize: 36, lineHeight: 1.15, fontWeight: 700, color: '#142018', textAlign: 'center', marginBottom: 24 }
+        : { fontSize: 24, lineHeight: 1.25, fontWeight: 700, color: '#142018', textAlign: 'center', marginBottom: 18 },
+      bodyLines: p.lines || [],
+      rowList: p.rows || [],
+      providerList: [
+        { short: 'Яндекс ID', disc: disc('assets/yandex-id.png') },
+        { short: 'T-ID', disc: disc('assets/t-id.svg') },
+        { short: 'Сбер ID', disc: disc('assets/sber-mark.png') },
+        { short: 'VK ID', disc: disc('assets/vk-id-blue.svg') },
+      ],
+      mark: !!p.mark,
+      providers: !!p.providers,
+      field: !!p.field,
+      fieldValue: typeof p.field === 'string' ? p.field : 'you@example.com',
+      primary: p.primary || '',
+      secondary: p.secondary || '',
+      hasPrimary: !!p.primary,
+      hasSecondary: !!p.secondary,
+      legal: !!p.legal,
+      note: p.note || '',
+    };
+  }
+}
+</script>
+</body>
+</html>
