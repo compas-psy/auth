@@ -14,7 +14,21 @@ export default defineConfig({
       "@wording": fileURLToPath(new URL("../server/src/ui/wording.ts", import.meta.url)),
     },
   },
-  build: { outDir: "dist", sourcemap: true },
+  build: {
+    outDir: "dist",
+    sourcemap: true,
+    // Имена без хеша: сервер отдаёт оболочку сам и ссылается на них
+    // из src/ui/render.ts. Хеш в имени означал бы, что оболочку надо
+    // пересобирать вместе с портом каждый раз.
+    rollupOptions: {
+      output: {
+        entryFileNames: "assets/portal.js",
+        chunkFileNames: "assets/[name].js",
+        assetFileNames: (info) =>
+          info.names?.[0]?.endsWith(".css") ? "assets/portal.css" : "assets/[name][extname]",
+      },
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",

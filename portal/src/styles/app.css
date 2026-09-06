@@ -167,3 +167,67 @@ input:focus-visible { outline: 2px solid var(--forest-700); outline-offset: 1px;
   .card { padding: 24px 20px; border-radius: 16px; }
   .screen { padding: 20px 12px; }
 }
+
+/* ── Портал аккаунта (артборды J, K, L, M, N) ── */
+
+.portal { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
+.portal-head { margin-bottom: 24px; }
+.back-link { color: var(--forest-700); text-decoration: none; font-size: 14px; }
+.back-link:hover { text-decoration: underline; }
+.portal-main h1 { text-align: left; font-size: 32px; margin-bottom: 8px; }
+.portal-main h2 {
+  font-size: 15px; font-weight: 700; margin: 32px 0 12px; color: var(--ink-900);
+}
+.portal-main section { margin-bottom: 8px; }
+
+.card-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px; margin: 24px 0 8px;
+}
+.nav-card {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 20px; background: var(--white);
+  border: 1px solid var(--border); border-radius: 16px;
+  text-decoration: none; color: inherit;
+}
+.nav-card:hover { background: var(--fill-light); }
+.nav-card-title { font-weight: 600; }
+.nav-card-hint { color: var(--ink-500); font-size: 13px; }
+
+.row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.row-main { display: flex; gap: 12px; align-items: baseline; flex: 1; }
+.row-label { font-weight: 500; }
+.row-value { color: var(--ink-500); }
+.row-note { width: 100%; margin: 4px 0 0; color: var(--ink-500); font-size: 13px; }
+.row-actions { display: flex; gap: 8px; }
+
+.product-list, .email-list, .document-list { list-style: none; margin: 0; padding: 0; }
+
+.switch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.switch {
+  width: 44px; height: 26px; border-radius: 13px; border: 1px solid var(--border);
+  background: var(--fill-light); padding: 2px; cursor: pointer;
+  display: flex; align-items: center;
+}
+.switch-knob {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--white);
+  box-shadow: 0 1px 3px rgba(20,32,24,.2); transition: transform .15s ease;
+}
+.switch-on { background: var(--forest-700); border-color: var(--forest-700); }
+.switch-on .switch-knob { transform: translateX(18px); }
+
+.confirm {
+  margin: 16px 0; padding: 20px; background: var(--white);
+  border: 1px solid var(--border); border-radius: 16px;
+}
+.confirm h2 { margin-top: 0; font-size: 18px; }
+.confirm .primary-button { width: auto; padding: 12px 20px; margin-right: 8px; }
+
+.pointer-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
+.add-email { margin-top: 16px; display: grid; gap: 8px; }

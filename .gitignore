@@ -9,3 +9,5 @@ coverage/
 keys/
 *.pem
 *.jwk
+portal/dist/
+devsite/dist/
