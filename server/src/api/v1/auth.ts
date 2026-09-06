@@ -10,6 +10,9 @@ import { issueEmailCode, verifyEmailCode } from "../../services/emailCode.js";
 import { THROTTLE_SECONDS } from "../../services/magicLink.js";
 import { getAccountProfile } from "../../services/accounts.js";
 import { sendEmailCode } from "../../services/mailer.js";
+import { nativeAdapterFor } from "../../services/providers/native.js";
+import { linkOrCreateByProvider } from "../../services/identityLink.js";
+import type { Provider } from "../../services/accounts.js";
 
 /**
  * Клиент называет себя заголовком X-Client-Id. Публичному клиенту
@@ -117,6 +120,79 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       },
     });
   });
+
+  /**
+   * Обмен кода внешнего сервиса, полученного приложением от его SDK.
+   *
+   * Формы логина провайдера у нас нет, встроенного webview нет,
+   * учётные данные провайдера не принимаются и не пересылаются
+   * (12_NATIVE_AUTH.md §7). Сюда приходит только код.
+   */
+  app.post<{ Params: { provider: string } }>(
+    "/v1/auth/provider/:provider/native",
+    async (req, reply) => {
+      const provider = req.params.provider;
+      const body = (req.body ?? {}) as {
+        provider_code?: string; device_key?: string; platform?: string;
+      };
+      if (!body.provider_code || !body.device_key || !body.platform) {
+        return reply.code(400).send({ error: "invalid_request" });
+      }
+
+      const adapter = nativeAdapterFor(provider);
+      // Провайдера без подключённого и проверенного SDK здесь нет —
+      // и на мобильном экране его тоже нет. Это следствие требования.
+      if (!adapter) {
+        return reply.code(400).send({ error: "provider_unavailable" });
+      }
+
+      let identity;
+      try {
+        identity = await adapter.exchange(body.provider_code);
+      } catch {
+        await writeAudit({ event: "provider_exchange", provider, outcome: "fail", ip: req.ip });
+        return reply.code(400).send({ error: "invalid_provider_code" });
+      }
+
+      // И-5: у каждой учётной записи всегда есть ПОДТВЕРЖДЁННАЯ почта.
+      // Слово провайдера «адрес такой» без признака подтверждения его
+      // не заменяет — ведёт на экран запроса почты (A7н).
+      if (!identity.email || !identity.emailVerified) {
+        return reply.code(422).send({ error: "email_required" });
+      }
+
+      const linked = await linkOrCreateByProvider({
+        provider: provider as Provider,
+        subject: identity.subject,
+        email: identity.email,
+      });
+      if (linked === "identity_taken") {
+        await writeAudit({ event: "provider_login", provider, outcome: "fail", ip: req.ip });
+        return reply.code(409).send({ error: "identity_taken" });
+      }
+
+      const pair = await issueTokens(linked.accountId, {
+        deviceKey: body.device_key, platform: body.platform, client: "app",
+      });
+      const profile = await getAccountProfile(linked.accountId);
+      await writeAudit({
+        accountId: linked.accountId, event: "login_provider_native",
+        provider, outcome: "ok", ip: req.ip,
+      });
+      return reply.send({
+        access_token: pair.access_token,
+        refresh_token: pair.refresh_token,
+        expires_in: pair.expires_in,
+        account: {
+          id: profile?.id,
+          email: profile?.email,
+          email_verified: profile?.emailVerified ?? false,
+          display_name: profile?.displayName ?? null,
+          products: profile?.products ?? [],
+        },
+      });
+    },
+  );
 
   /**
    * Ротация. Refresh всегда новый; приход потраченного гасит цепочку
