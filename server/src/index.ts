@@ -1,8 +1,10 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import middie from "@fastify/middie";
 import { loadConfig } from "./config.js";
 import { getPool } from "./db/pool.js";
 import { runMigrations } from "./db/migrate.js";
 import { logger } from "./lib/logging.js";
+import { buildProvider, OIDC_MOUNT } from "./oidc/provider.js";
 
 export interface BuildOptions {
   /** Прогонять ли миграции при сборке. В тестах — один раз, в проде — всегда. */
@@ -14,8 +16,8 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   if (opts.migrate) await runMigrations();
 
   const app = Fastify({
-    // Свой логгер: штатный pino печатает URL и заголовки, а в них
-    // едут почта и токены. Требование У-9 — журналов без ПДн.
+    // Свой логгер: штатный печатает URL и заголовки, а в них едут
+    // почта и токены. Требование У-9 — журналов без ПДн.
     logger: false,
     trustProxy: true,
     bodyLimit: 64 * 1024,
@@ -32,12 +34,42 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
     }
   });
 
+  // Монтирование по ответу context7 (docs/README.md, «Mount oidc-provider
+  // to Fastify»): @fastify/middie + fastify.use(prefix, provider.callback()).
+  // Провайдер сам выводит префикс из req.originalUrl
+  // (lib/helpers/oidc_context.js:88), поэтому объявленные в discovery
+  // адреса ручек получаются с /oidc.
+  const provider = await buildProvider();
+  await app.register(middie);
+  app.use(OIDC_MOUNT, provider.callback());
+
+  // Тот же ответ context7 требует развесить метаданные так, чтобы они
+  // находились по адресу, который выводится из issuer. Клиент с
+  // issuer = https://auth.cmpas.ru идёт на /.well-known/openid-configuration,
+  // а провайдер смонтирован на /oidc — без этой пары рецепт для ПРАКТИКИ
+  // не работает. Источник истины один: ответ отдаёт сам провайдер.
+  for (const wellKnown of [
+    "/.well-known/openid-configuration",
+    "/.well-known/oauth-authorization-server",
+  ]) {
+    app.get(wellKnown, async (_req, reply) => {
+      const inner = await app.inject({ url: `${OIDC_MOUNT}/.well-known/openid-configuration` });
+      return reply.code(inner.statusCode).type("application/json").send(inner.body);
+    });
+  }
+
+  app.decorate("oidc", provider);
   return app;
 }
 
+declare module "fastify" {
+  interface FastifyInstance {
+    oidc: Awaited<ReturnType<typeof buildProvider>>;
+  }
+}
+
 const isEntrypoint =
-  process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1]}`;
+  process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`;
 
 if (isEntrypoint) {
   const config = loadConfig();

@@ -34,3 +34,26 @@ export async function resetData(): Promise<void> {
   const names = rows.map((r) => `"${r.tablename}"`).join(", ");
   await getPool().query(`TRUNCATE ${names} RESTART IDENTITY CASCADE`);
 }
+
+/**
+ * Клиент для тестов протокола. Реестр клиентов живёт в базе, а не в
+ * конфигурации, — поэтому его надо завести до сборки сервера.
+ */
+export async function ensureTestClient(): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    `INSERT INTO oidc_clients
+       (client_id, client_name, client_secret, redirect_uris, auth_method, first_party, product)
+     VALUES ('test', 'Тестовый клиент', $1, ARRAY['https://ex.test/cb'],
+             'client_secret_basic', false, NULL)
+     ON CONFLICT (client_id) DO NOTHING`,
+    ["t".repeat(43)],
+  );
+  await getPool().query(
+    `INSERT INTO oidc_clients
+       (client_id, client_name, client_secret, redirect_uris, auth_method, first_party, product)
+     VALUES ('practice-mobile', 'ПРАКТИКА для Android', NULL, ARRAY[]::text[],
+             'none', true, 'practice')
+     ON CONFLICT (client_id) DO NOTHING`,
+  );
+}
