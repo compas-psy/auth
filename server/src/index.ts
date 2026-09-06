@@ -6,6 +6,11 @@ import { runMigrations } from "./db/migrate.js";
 import { logger } from "./lib/logging.js";
 import { buildProvider, OIDC_MOUNT } from "./oidc/provider.js";
 import { registerAuthRoutes } from "./api/v1/auth.js";
+import { registerAccountRoutes } from "./api/v1/account.js";
+import { registerIdentityRoutes } from "./api/v1/identities.js";
+import { registerSessionRoutes } from "./api/v1/sessions.js";
+import { registerConsentRoutes } from "./api/v1/consents.js";
+import { registerAuditRoutes } from "./api/v1/audit.js";
 
 export interface BuildOptions {
   /** Прогонять ли миграции при сборке. В тестах — один раз, в проде — всегда. */
@@ -61,6 +66,11 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
 
   app.decorate("oidc", provider);
   await registerAuthRoutes(app);
+  await registerAccountRoutes(app);
+  await registerIdentityRoutes(app);
+  await registerSessionRoutes(app);
+  await registerConsentRoutes(app);
+  await registerAuditRoutes(app);
   return app;
 }
 

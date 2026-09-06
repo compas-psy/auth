@@ -57,3 +57,21 @@ export async function ensureTestClient(): Promise<void> {
      ON CONFLICT (client_id) DO NOTHING`,
   );
 }
+
+/** Ключ доступа для тестов API. Выпускается тем же путём, что и в бою. */
+export async function issueTestToken(
+  accountId: string,
+  device: { deviceKey?: string; platform?: string; client?: string } = {},
+): Promise<{ token: string; sessionId: string }> {
+  const { issueTokens } = await import("../src/services/tokens.js");
+  const pair = await issueTokens(accountId, {
+    deviceKey: device.deviceKey ?? "test-device",
+    platform: device.platform ?? "windows",
+    client: device.client ?? "chrome",
+  });
+  return { token: pair.access_token, sessionId: pair.session_id };
+}
+
+export function authHeaders(token: string): Record<string, string> {
+  return { authorization: `Bearer ${token}` };
+}
