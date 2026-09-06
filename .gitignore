@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+!.env.example
+coverage/
+# Ключи подписи живут в томе, не в git (Задача 16, шаг 4).
+keys/
+*.pem
+*.jwk
