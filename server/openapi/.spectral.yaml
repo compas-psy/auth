@@ -1,0 +1,38 @@
+extends: ["spectral:oas"]
+rules:
+  operation-operationId: error
+  operation-description: error
+  operation-tag-defined: error
+  oas3-valid-schema-example: error
+
+  simpas-snake-case-properties:
+    description: Поля ответа — snake_case, как в примерах ресурса разработчика
+    given: $.components.schemas..properties.*~
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9_]*$"
+
+  simpas-no-forbidden-fields:
+    description: И-2 на уровне API — телефона, кода и пароля в контракте нет
+    given: $.components.schemas..properties.*~
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "^(phone|otp|sms_code|password|passphrase|vault_key|master_key|wrapped_key|key_material|recovery_key|kek|secret_key)$"
+
+  simpas-no-internal-path:
+    description: Внутреннего пути не существует — /internal в публичном контракте недопустим
+    given: $.paths.*~
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "internal"
+
+  simpas-server-is-auth-cmpas:
+    description: Адрес сервиса — auth.cmpas.ru; api.simpas.ru на макетах устарел
+    given: $.servers[*].url
+    then:
+      function: pattern
+      functionOptions:
+        match: "^https://auth\\.cmpas\\.ru"

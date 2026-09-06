@@ -1,0 +1,40 @@
+name: API
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  spec:
+    name: Спецификация
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Стайл-гайд спецификации
+        run: >-
+          npx --yes @stoplight/spectral-cli lint
+          server/openapi/simpasid.v1.yaml
+          --ruleset server/openapi/.spectral.yaml
+          --fail-severity error
+
+      # Ломающее изменение видно ДО слияния, а не после (артборд R3).
+      - name: Ломающие изменения контракта
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          if ! git show "origin/${{ github.base_ref }}:server/openapi/simpasid.v1.yaml" > /tmp/base.yaml 2>/dev/null; then
+            echo "Спецификации в базовой ветке нет — сравнивать не с чем, это первое появление контракта."
+            exit 0
+          fi
+          npx --yes oasdiff breaking /tmp/base.yaml server/openapi/simpasid.v1.yaml --fail-on ERR

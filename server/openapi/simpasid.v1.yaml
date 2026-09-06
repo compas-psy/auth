@@ -1,0 +1,1001 @@
+openapi: 3.1.0
+info:
+  title: API аккаунта СИМПАС
+  version: "1.0.0"
+  description: |
+    Единый API личности СИМПАС. Этим же API работает портал аккаунта и мобильные
+    приложения: отдельного внутреннего пути не существует. Если чего-то нет здесь —
+    этого не может быть и на экране.
+
+    Чего в этом API нет и не появится: пароля, телефона, SMS, ролей, тарифов,
+    признака «психолог», аватара и ФИО из внешнего сервиса. Продукт узнаёт права
+    из своей базы по `sub`.
+  contact:
+    name: Поддержка СИМПАС
+    url: https://auth.cmpas.ru/dev
+servers:
+  - url: https://auth.cmpas.ru/v1
+    description: Боевой контур
+
+tags:
+  - name: account
+    description: Профиль и почты
+  - name: identities
+    description: Способы входа
+  - name: sessions
+    description: Устройства и сеансы
+  - name: consents
+    description: Согласия и коммуникации
+  - name: audit
+    description: Журнал значимых событий
+  - name: auth
+    description: Первичный вход для наших мобильных приложений
+
+security:
+  - bearerAuth: []
+
+paths:
+  /account:
+    get:
+      operationId: getAccount
+      tags: [account]
+      summary: Профиль
+      description: Профиль текущей учётной записи и перечень подключённых продуктов.
+      responses:
+        "200":
+          description: Профиль
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Account" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      operationId: updateAccount
+      tags: [account]
+      summary: Изменить имя
+      description: Меняет имя, которое человек видит в письмах и в портале. Профиль продукта здесь не редактируется.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountPatch" }
+      responses:
+        "200":
+          description: Обновлённый профиль
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Account" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account/emails:
+    get:
+      operationId: listEmails
+      tags: [account]
+      summary: Почты
+      description: Все почты учётной записи с признаком основной и подтверждённой.
+      responses:
+        "200":
+          description: Перечень почт
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      operationId: addEmail
+      tags: [account]
+      summary: Добавить почту
+      description: Отправляет письмо для подтверждения нового адреса. Адрес становится действующим только после подтверждения.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddEmailRequest" }
+      responses:
+        "202":
+          description: Письмо отправлено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Accepted" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /account/emails/{email_id}:
+    delete:
+      operationId: deleteEmail
+      tags: [account]
+      summary: Удалить почту
+      description: |
+        Удаляет дополнительную почту. Последний способ входа удалить нельзя:
+        отказ приходит от сервера кодом 409 `last_login_method`, а не прячется
+        в интерфейсе.
+      parameters:
+        - $ref: "#/components/parameters/EmailId"
+      responses:
+        "204": { description: Удалена }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /account/emails/{email_id}/primary:
+    post:
+      operationId: makeEmailPrimary
+      tags: [account]
+      summary: Сделать основной
+      description: Делает подтверждённую почту основной. На неё уходят письма и она попадает в id_token.
+      parameters:
+        - $ref: "#/components/parameters/EmailId"
+      responses:
+        "200":
+          description: Перечень почт после изменения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EmailList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /account/identities:
+    get:
+      operationId: listIdentities
+      tags: [identities]
+      summary: Способы входа
+      description: Привязанные внешние способы входа с датой привязки.
+      responses:
+        "200":
+          description: Перечень способов входа
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IdentityList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account/identities/{provider}/link:
+    post:
+      operationId: linkIdentity
+      tags: [identities]
+      summary: Привязать способ входа
+      description: |
+        Начинает привязку внешнего способа входа из открытой сессии владельца.
+        Занятый аккаунт внешнего сервиса привязать нельзя: 409 `identity_taken`.
+      parameters:
+        - $ref: "#/components/parameters/ProviderName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LinkIdentityRequest" }
+      responses:
+        "200":
+          description: Способ входа привязан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Identity" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /account/identities/{identity_id}:
+    delete:
+      operationId: unlinkIdentity
+      tags: [identities]
+      summary: Отвязать способ входа
+      description: |
+        Отвязывает внешний способ входа. Если после отвязки у учётной записи не
+        останется подтверждённой почты — отказ 409 `last_login_method` (И-5).
+      parameters:
+        - $ref: "#/components/parameters/IdentityId"
+      responses:
+        "204": { description: Отвязан }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /account/sessions:
+    get:
+      operationId: listSessions
+      tags: [sessions]
+      summary: Устройства и сеансы
+      description: |
+        Действующие сеансы учётной записи. Возвращает огрублённые сведения об
+        устройстве — семейство платформы и клиента без версии. IP-адрес и точное
+        устройство не хранятся и не отдаются.
+      responses:
+        "200":
+          description: Перечень сеансов
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account/sessions/{session_id}:
+    delete:
+      operationId: revokeSession
+      tags: [sessions]
+      summary: Завершить сеанс
+      description: Завершает один сеанс. Токены обновления этого устройства перестают действовать сразу.
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+      responses:
+        "204": { description: Завершён }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /account/sessions/revoke-others:
+    post:
+      operationId: revokeOtherSessions
+      tags: [sessions]
+      summary: Выйти на всех устройствах, кроме этого
+      description: Завершает все сеансы, кроме текущего.
+      responses:
+        "200":
+          description: Сколько сеансов завершено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RevokedCount" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account/consents:
+    get:
+      operationId: getConsents
+      tags: [consents]
+      summary: Согласия и коммуникации
+      description: |
+        Действующее состояние рекламных согласий по каналам и перечень принятых
+        документов с редакцией и неизменяемой ссылкой на принятый текст.
+      responses:
+        "200":
+          description: Состояние согласий
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsentsState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      operationId: setConsent
+      tags: [consents]
+      summary: Изменить согласие
+      description: |
+        Записывает согласие или его отзыв новым событием. Прежняя запись не
+        правится: история отзывов и повторных согласий сохраняется целиком.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SetConsentRequest" }
+      responses:
+        "200":
+          description: Состояние после изменения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsentsState" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account/consents/revoke-all-marketing:
+    post:
+      operationId: revokeAllMarketing
+      tags: [consents]
+      summary: Отключить всю рекламу
+      description: |
+        Отзывает рекламное согласие по всем каналам и во всех сервисах. Письма о
+        записи, оплате и безопасности продолжают приходить: это не реклама.
+      responses:
+        "200":
+          description: Состояние после отзыва
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConsentsState" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /account/audit:
+    get:
+      operationId: listAuditEvents
+      tags: [audit]
+      summary: Журнал событий
+      description: |
+        Значимые события учётной записи. Ни почта, ни токены, ни адреса в журнал
+        не пишутся — только событие, исход и время.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Сколько событий вернуть, не больше двухсот.
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: События
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /auth/methods:
+    get:
+      operationId: getAuthMethods
+      tags: [auth]
+      summary: Доступные способы входа
+      description: |
+        Какие способы входа показывать на этой платформе. Внешний способ входа
+        появляется в мобильном приложении только если для него подключён
+        проверенный нативный набор средств. Вход по почте доступен всегда.
+      security: []
+      parameters:
+        - name: platform
+          in: query
+          required: false
+          description: Платформа, с которой спрашивают.
+          schema: { $ref: "#/components/schemas/Platform" }
+      responses:
+        "200":
+          description: Способы входа
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthMethods" }
+
+  /auth/email/start:
+    post:
+      operationId: startEmailAuth
+      tags: [auth]
+      summary: Выслать код на почту
+      description: |
+        Отправляет код из письма. Отвечает 202 всегда — независимо от того, есть
+        ли такая учётная запись: разные ответы превращают эту ручку в способ
+        узнать, зарегистрирован ли человек.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailStartRequest" }
+      responses:
+        "202":
+          description: Письмо отправлено, если адрес существует
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RetryAfter" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/ForbiddenClient" }
+
+  /auth/email/verify:
+    post:
+      operationId: verifyEmailAuth
+      tags: [auth]
+      summary: Проверить код из письма
+      description: |
+        Меняет код из письма на пару токенов. После пяти неверных попыток код
+        гасится безвозвратно и нужен новый.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailVerifyRequest" }
+      responses:
+        "200":
+          description: Вход выполнен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/InvalidCode" }
+        "403": { $ref: "#/components/responses/ForbiddenClient" }
+        "429": { $ref: "#/components/responses/TooManyAttempts" }
+
+  /auth/provider/{provider}/native:
+    post:
+      operationId: verifyProviderNative
+      tags: [auth]
+      summary: Обменять код внешнего сервиса
+      description: |
+        Меняет код, полученный приложением от внешнего сервиса, на нашу пару
+        токенов. Код проверяется на сервере внешнего сервиса, а не принимается
+        на слово; его токены после обмена не сохраняются.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ProviderName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderNativeRequest" }
+      responses:
+        "200":
+          description: Вход выполнен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/ForbiddenClient" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /auth/token/refresh:
+    post:
+      operationId: refreshToken
+      tags: [auth]
+      summary: Обновить токены
+      description: |
+        Меняет токен обновления на новую пару. Токен обновления одноразовый:
+        предъявление уже использованного гасит все токены этого устройства.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "200":
+          description: Новая пара
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenPair" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/ForbiddenClient" }
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Выйти
+      description: Завершает сеанс этого устройства. Отвечает 204 в любом случае.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "204": { description: Выполнено }
+        "403": { $ref: "#/components/responses/ForbiddenClient" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Ключ доступа, выданный при входе.
+
+  parameters:
+    EmailId:
+      name: email_id
+      in: path
+      required: true
+      description: Идентификатор почты.
+      schema: { type: string }
+    IdentityId:
+      name: identity_id
+      in: path
+      required: true
+      description: Идентификатор способа входа.
+      schema: { type: string }
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      description: Идентификатор сеанса.
+      schema: { type: string }
+    ProviderName:
+      name: provider
+      in: path
+      required: true
+      description: Внешний сервис входа.
+      schema: { $ref: "#/components/schemas/ProviderCode" }
+
+  responses:
+    Unauthorized:
+      description: Ключ доступа не предъявлен или не действует
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadRequest:
+      description: Запрос не разобран
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: Действие противоречит состоянию учётной записи
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unprocessable:
+      description: Данных не хватает для действия
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ForbiddenClient:
+      description: Этому клиенту первичный вход недоступен
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    InvalidCode:
+      description: Код неверен
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/InvalidCodeError" }
+    TooManyAttempts:
+      description: Попытки исчерпаны, код погашен
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    ProductCode:
+      type: string
+      enum: [practice, zapiski, moments]
+      description: Продукт экосистемы.
+
+    ProviderCode:
+      type: string
+      enum: [yandex, tid, sberid, vkid]
+      description: Внешний сервис входа.
+
+    Platform:
+      type: string
+      enum: [web, android, ios, desktop]
+      description: Платформа клиента.
+
+    ChannelCode:
+      type: string
+      enum: [email, push]
+      description: Канал сообщений. SMS и звонков нет.
+
+    Account:
+      type: object
+      description: Учётная запись СИМПАС.
+      required: [id, email, email_verified, products]
+      properties:
+        id:
+          type: string
+          description: Устойчивый идентификатор учётной записи.
+          examples: ["acc_8f21a4c0"]
+        email:
+          type: string
+          description: Основная почта.
+          examples: ["t@ya.ru"]
+        email_verified:
+          type: boolean
+          description: Подтверждена ли основная почта.
+          examples: [true]
+        display_name:
+          type: [string, "null"]
+          description: Имя, которое человек ввёл сам.
+          examples: ["Илья"]
+        products:
+          type: array
+          description: Подключённые продукты.
+          items: { $ref: "#/components/schemas/ProductCode" }
+          examples: [["practice", "zapiski"]]
+
+    AccountPatch:
+      type: object
+      description: Изменяемые поля профиля.
+      properties:
+        display_name:
+          type: [string, "null"]
+          maxLength: 100
+          description: Имя. Пустое значение убирает имя.
+          examples: ["Илья"]
+
+    Email:
+      type: object
+      description: Почта учётной записи.
+      required: [id, email, verified, is_primary]
+      properties:
+        id:
+          type: string
+          description: Идентификатор почты.
+          examples: ["eml_31af"]
+        email:
+          type: string
+          description: Адрес.
+          examples: ["t@ya.ru"]
+        verified:
+          type: boolean
+          description: Подтверждён ли адрес.
+          examples: [true]
+        is_primary:
+          type: boolean
+          description: Основная ли это почта.
+          examples: [true]
+        added_at:
+          type: string
+          format: date-time
+          description: Когда добавлена.
+          examples: ["2026-03-12T09:00:00Z"]
+
+    EmailList:
+      type: object
+      description: Перечень почт.
+      required: [emails]
+      properties:
+        emails:
+          type: array
+          description: Почты учётной записи.
+          items: { $ref: "#/components/schemas/Email" }
+
+    AddEmailRequest:
+      type: object
+      description: Запрос на добавление почты.
+      required: [email]
+      properties:
+        email:
+          type: string
+          description: Новый адрес.
+          examples: ["i@gmail.com"]
+
+    Identity:
+      type: object
+      description: Привязанный способ входа.
+      required: [id, provider, linked_at]
+      properties:
+        id:
+          type: string
+          description: Идентификатор привязки.
+          examples: ["idn_77c0"]
+        provider: { $ref: "#/components/schemas/ProviderCode" }
+        linked_at:
+          type: string
+          format: date-time
+          description: Когда привязан.
+          examples: ["2026-03-12T09:00:00Z"]
+        last_login_at:
+          type: [string, "null"]
+          format: date-time
+          description: Когда через него входили в последний раз.
+          examples: ["2026-09-01T10:00:00Z"]
+
+    IdentityList:
+      type: object
+      description: Перечень способов входа.
+      required: [identities]
+      properties:
+        identities:
+          type: array
+          description: Привязанные способы входа.
+          items: { $ref: "#/components/schemas/Identity" }
+
+    LinkIdentityRequest:
+      type: object
+      description: Запрос на привязку способа входа.
+      required: [subject]
+      properties:
+        subject:
+          type: string
+          description: Идентификатор человека во внешнем сервисе.
+          examples: ["y-1029"]
+        email_at_link:
+          type: [string, "null"]
+          description: Почта, которую отдал внешний сервис в момент привязки.
+          examples: ["t@ya.ru"]
+
+    Session:
+      type: object
+      description: Сеанс на устройстве.
+      required: [id, current, last_seen_at]
+      properties:
+        id:
+          type: string
+          description: Идентификатор сеанса.
+          examples: ["ses_31af"]
+        current:
+          type: boolean
+          description: Этот ли сеанс сейчас используется.
+          examples: [true]
+        platform:
+          type: [string, "null"]
+          description: Огрублённое семейство платформы без версии.
+          examples: ["windows"]
+        client:
+          type: [string, "null"]
+          description: Огрублённый клиент без версии.
+          examples: ["chrome"]
+        last_seen_at:
+          type: string
+          format: date-time
+          description: Последняя активность.
+          examples: ["2026-09-06T14:20:00Z"]
+
+    SessionList:
+      type: object
+      description: Перечень сеансов.
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          description: Действующие сеансы.
+          items: { $ref: "#/components/schemas/Session" }
+
+    RevokedCount:
+      type: object
+      description: Сколько сеансов завершено.
+      required: [revoked]
+      properties:
+        revoked:
+          type: integer
+          description: Число завершённых сеансов.
+          examples: [2]
+
+    Communication:
+      type: object
+      description: Состояние рекламного согласия по одному каналу.
+      required: [channel, status]
+      properties:
+        channel: { $ref: "#/components/schemas/ChannelCode" }
+        status:
+          type: string
+          enum: [granted, revoked]
+          description: Действующее состояние.
+          examples: ["revoked"]
+        since:
+          type: [string, "null"]
+          format: date-time
+          description: С какого момента действует.
+          examples: ["2026-09-06T14:20:00Z"]
+
+    AcceptedDocument:
+      type: object
+      description: Принятый документ.
+      required: [document_code, title, version, accepted_at, url]
+      properties:
+        document_code:
+          type: string
+          description: Код документа.
+          examples: ["cmpas_terms"]
+        title:
+          type: string
+          description: Название документа.
+          examples: ["Пользовательское соглашение СИМПАС"]
+        version:
+          type: string
+          description: Принятая редакция.
+          examples: ["0.9"]
+        accepted_at:
+          type: string
+          format: date-time
+          description: Когда принят.
+          examples: ["2026-03-12T09:00:00Z"]
+        url:
+          type: string
+          description: Неизменяемая ссылка на принятую редакцию, а не на текущую.
+          examples: ["/legal/terms/0.9"]
+
+    ConsentsState:
+      type: object
+      description: Согласия и коммуникации.
+      required: [communications, accepted_documents]
+      properties:
+        communications:
+          type: array
+          description: Рекламные согласия по каналам. Все выключены, пока человек не включил.
+          items: { $ref: "#/components/schemas/Communication" }
+        accepted_documents:
+          type: array
+          description: Принятые документы с редакцией.
+          items: { $ref: "#/components/schemas/AcceptedDocument" }
+
+    SetConsentRequest:
+      type: object
+      description: Изменение согласия.
+      required: [document_code, version, status, action]
+      properties:
+        document_code:
+          type: string
+          description: Код документа.
+          examples: ["cmpas_marketing_consent"]
+        version:
+          type: string
+          description: Редакция, которую человек видел.
+          examples: ["0.9"]
+        channel: { $ref: "#/components/schemas/ChannelCode" }
+        status:
+          type: string
+          enum: [granted, revoked]
+          description: Что делаем.
+          examples: ["granted"]
+        action:
+          type: string
+          description: Каким действием человек это выразил.
+          examples: ["switch_marketing_email"]
+
+    AuditEvent:
+      type: object
+      description: Событие журнала.
+      required: [id, event, outcome, at]
+      properties:
+        id:
+          type: string
+          description: Идентификатор события.
+          examples: ["evt_01"]
+        event:
+          type: string
+          description: Что произошло.
+          examples: ["login"]
+        provider:
+          type: [string, "null"]
+          description: Внешний сервис, если событие про него.
+          examples: ["yandex"]
+        outcome:
+          type: string
+          enum: [ok, fail]
+          description: Исход.
+          examples: ["ok"]
+        at:
+          type: string
+          format: date-time
+          description: Когда.
+          examples: ["2026-09-06T14:20:00Z"]
+
+    AuditList:
+      type: object
+      description: Перечень событий.
+      required: [events]
+      properties:
+        events:
+          type: array
+          description: События, новые вперёд.
+          items: { $ref: "#/components/schemas/AuditEvent" }
+
+    AuthMethods:
+      type: object
+      description: Доступные способы входа.
+      required: [email, providers]
+      properties:
+        email:
+          type: boolean
+          description: Доступен ли вход по почте. Всегда true.
+          examples: [true]
+        providers:
+          type: array
+          description: Внешние способы входа, доступные на этой платформе.
+          items: { $ref: "#/components/schemas/ProviderCode" }
+          examples: [[]]
+
+    EmailStartRequest:
+      type: object
+      description: Начало входа по почте.
+      required: [email, device_key, platform]
+      properties:
+        email:
+          type: string
+          description: Адрес.
+          examples: ["t@ya.ru"]
+        device_key:
+          type: string
+          description: Ключ устройства, на котором начат вход.
+          examples: ["dev-1"]
+        platform: { $ref: "#/components/schemas/Platform" }
+        terms_version:
+          type: string
+          description: Редакция соглашения, показанная на экране входа.
+          examples: ["0.9"]
+
+    EmailVerifyRequest:
+      type: object
+      description: Проверка кода из письма.
+      required: [email, code, device_key]
+      properties:
+        email:
+          type: string
+          description: Адрес.
+          examples: ["t@ya.ru"]
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: Шесть цифр из письма.
+          examples: ["123456"]
+        device_key:
+          type: string
+          description: Тот же ключ устройства, что при начале входа.
+          examples: ["dev-1"]
+        platform: { $ref: "#/components/schemas/Platform" }
+
+    ProviderNativeRequest:
+      type: object
+      description: Обмен кода внешнего сервиса.
+      required: [provider_code, device_key, platform]
+      properties:
+        provider_code:
+          type: string
+          description: Код, полученный приложением от внешнего сервиса.
+          examples: ["abc"]
+        device_key:
+          type: string
+          description: Ключ устройства.
+          examples: ["dev-1"]
+        platform: { $ref: "#/components/schemas/Platform" }
+
+    RefreshRequest:
+      type: object
+      description: Токен обновления.
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          description: Действующий токен обновления.
+          examples: ["rt_31af"]
+
+    TokenPair:
+      type: object
+      description: Пара токенов.
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+          description: Ключ доступа к API.
+          examples: ["at_8f21"]
+        refresh_token:
+          type: string
+          description: Новый токен обновления. Прежний перестаёт действовать.
+          examples: ["rt_77c0"]
+        expires_in:
+          type: integer
+          description: Сколько секунд действует ключ доступа.
+          examples: [900]
+
+    TokenResponse:
+      type: object
+      description: Пара токенов и профиль.
+      required: [access_token, refresh_token, expires_in, account]
+      properties:
+        access_token:
+          type: string
+          description: Ключ доступа к API.
+          examples: ["at_8f21"]
+        refresh_token:
+          type: string
+          description: Токен обновления.
+          examples: ["rt_77c0"]
+        expires_in:
+          type: integer
+          description: Сколько секунд действует ключ доступа.
+          examples: [900]
+        account: { $ref: "#/components/schemas/Account" }
+
+    RetryAfter:
+      type: object
+      description: Через сколько можно повторить.
+      required: [retry_after_seconds]
+      properties:
+        retry_after_seconds:
+          type: integer
+          description: Пауза в секундах.
+          examples: [60]
+
+    Accepted:
+      type: object
+      description: Принято к исполнению.
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Что произошло.
+          examples: ["sent"]
+
+    Error:
+      type: object
+      description: Отказ.
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Машинный код отказа. Текст для человека берётся из реестра формулировок, а не отсюда.
+          examples: ["last_login_method"]
+
+    InvalidCodeError:
+      type: object
+      description: Неверный код.
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Машинный код отказа.
+          examples: ["invalid_code"]
+        attempts_left:
+          type: integer
+          description: Сколько попыток осталось.
+          examples: [4]
