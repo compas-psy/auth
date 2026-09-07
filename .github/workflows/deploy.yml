@@ -43,21 +43,29 @@ jobs:
       - name: Выложить
         env:
           SIMPASID_DB_PASSWORD: ${{ secrets.SIMPASID_DB_PASSWORD }}
+          # Выкладывается ровно тот коммит, который запустил прогон, а не
+          # «то, что сейчас в ветке». Иначе между проверкой и выкладкой
+          # успевает влезть чужой пуш, и на сервер уезжает непроверенное.
+          # Заодно снимается зависимость от имени ветки по умолчанию.
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "SIMPASID_DB_PASSWORD='${SIMPASID_DB_PASSWORD}' bash -s" <<'REMOTE'
+            "SIMPASID_DB_PASSWORD='${SIMPASID_DB_PASSWORD}' DEPLOY_SHA='${DEPLOY_SHA}' bash -s" <<'REMOTE'
           set -euo pipefail
 
           DIR=/var/www/auth.cmpas.ru
           # Свой каталог, рядом с /var/www/cmpas.ru и /var/www/zapiski,
           # но отдельный. Ни один файл соседа не читается и не пишется.
           if [ ! -d "$DIR/.git" ]; then
-            git clone --depth 1 https://github.com/compas-psy/auth "$DIR"
+            mkdir -p "$DIR"
+            git init -q "$DIR"
+            git -C "$DIR" remote add origin https://github.com/compas-psy/auth
           fi
           cd "$DIR"
-          git fetch origin main
-          git reset --hard origin/main
+          git fetch --depth 1 origin "$DEPLOY_SHA"
+          git reset --hard "$DEPLOY_SHA"
+          echo "Выкладывается коммит $DEPLOY_SHA"
 
           # Пароль базы заводится ОДИН раз и дальше живёт на сервере:
           # он не в git и не в образе. Если секрет не передан, берём
