@@ -174,3 +174,36 @@ describe("рабочий процесс выкладки", () => {
     expect(script).not.toContain("openssl rand");
   });
 });
+
+describe("осмотр сервера", () => {
+  const raw = readFileSync(
+    new URL("../../.github/workflows/diagnose.yml", import.meta.url), "utf8");
+  const wf = parse(raw) as {
+    on: Record<string, unknown>;
+    jobs: Record<string, { steps: { with?: { script?: string } }[] }>;
+  };
+  const script = wf.jobs.ports!.steps[0]!.with!.script!;
+
+  it("запускается только руками", () => {
+    // Осмотр, который ходит на боевой сервер сам по расписанию или на
+    // каждый push, — лишний доступ без повода.
+    expect(Object.keys(wf.on)).toEqual(["workflow_dispatch"]);
+  });
+
+  it("не содержит ни одной команды, меняющей состояние", () => {
+    // Смысл осмотра — узнать, а не поправить. Соседний продукт живой.
+    const forbidden = [
+      "docker compose", "docker run", "docker stop", "docker rm", "docker kill",
+      "systemctl", "kill ", "rm ", "mv ", "sed -i", "tee ", ">>", "chmod", "chown",
+    ];
+    for (const cmd of forbidden) {
+      expect({ cmd, found: script.includes(cmd) }).toEqual({ cmd, found: false });
+    }
+  });
+
+  it("не печатает полные командные строки чужих процессов", () => {
+    // В аргументах соседского процесса может оказаться то, чему не
+    // место в журнале прогона.
+    expect(script).not.toMatch(/\bps\s+(aux|-ef)/);
+  });
+});

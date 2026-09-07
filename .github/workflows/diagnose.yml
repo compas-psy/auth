@@ -1,0 +1,48 @@
+name: Осмотр сервера
+
+# ТОЛЬКО ЧТЕНИЕ. Ни одной команды, меняющей состояние сервера: ни
+# docker, ни systemctl, ни правки файлов. Нужен, когда выкладка
+# упирается в занятый ресурс и решение надо принимать по факту, а не
+# по догадке — как случилось с портом 3100
+# («Bind for 127.0.0.1:3100 failed: port is already allocated»).
+#
+# Запускается вручную и никогда сам.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ports:
+    name: Какие порты петли заняты
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Снять карту слушателей
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: 22
+          command_timeout: 5m
+          script: |
+            set -eu
+            echo "== слушатели TCP =="
+            # Только адрес, порт и имя процесса. Полная командная
+            # строка не печатается: в её аргументах у соседа могут
+            # оказаться значения, которым не место в журнале прогона.
+            ss -ltnH | awk '{print $4}' | sort -u
+            echo
+            echo "== кто держит порты 3000-3999 =="
+            ss -ltnpH 2>/dev/null \
+              | awk '$4 ~ /:(3[0-9][0-9][0-9])$/ {print $4, $NF}' \
+              | sed 's/pid=[0-9]*,//; s/fd=[0-9]*//' \
+              | sort -u
+            echo
+            echo "== контейнеры =="
+            docker ps --format '{{.Names}}\t{{.Ports}}'
