@@ -72,6 +72,29 @@ jobs:
               || echo ".env не прочитан"
 
             echo
+            echo "== почта: что сделали МЫ =="
+            # Наши события писем адресов не содержат по построению (У-9):
+            # в них только вид письма и исход.
+            docker logs --since 6h simpasid-app 2>&1 \
+              | grep -o '"event":"mail_[a-z_]*"[^}]*' | sort | uniq -c \
+              || echo "попыток отправки за 6 часов не было"
+
+            echo
+            echo "== почта: что сделал релей =="
+            # ТОЛЬКО исходы доставки, без единого адреса. Журнал релея
+            # общий с соседом, и чужие адреса в журнал прогона попадать
+            # не должны — как и свои.
+            docker logs --since 6h cmpas-mailer 2>&1 \
+              | grep -o 'status=[a-z]*' | sort | uniq -c \
+              || echo "релей за 6 часов ничего не отправлял"
+            echo "(исходы по всему релею: и наши письма, и соседские)"
+
+            echo
+            echo "== почта: очередь =="
+            docker exec cmpas-mailer postqueue -p 2>&1 | tail -3 \
+              || echo "очередь не прочитана"
+
+            echo
             echo "== что отвечает сам сервер =="
             curl -sI --max-time 10 https://auth.cmpas.ru/healthz | head -3 || echo "HTTPS с самого сервера не отвечает"
             curl -s -o /dev/null -w 'локально 3200 -> %{http_code}\n' --max-time 5 http://127.0.0.1:3200/healthz || true
