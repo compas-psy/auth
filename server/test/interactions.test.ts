@@ -47,10 +47,15 @@ describe("экраны взаимодействия", () => {
     expect(r.body).not.toMatch(/type=["']checkbox["']/);
   });
 
-  it("юридическая строка называет редакцию и не принимает Политику", async () => {
+  it("юридическая строка ведёт на редакцию, но номера не называет", async () => {
+    // Номер редакции с экрана убран (решение учредителя 07.09.2026):
+    // в макете его не было, он был дописан в реализации. Ссылка при
+    // этом ведёт на КОНКРЕТНУЮ редакцию — доказательством служит она
+    // и запись в журнале согласий, а не надпись.
     const { uid, cookies } = await startInteraction();
     const r = await app.inject({ url: `/interaction/${uid}`, headers: { ...HOST, cookie: cookies } });
-    expect(r.body).toContain("редакция 0.9");
+    expect(r.body).not.toContain("редакция");
+    expect(r.body).toContain('href="/legal/terms/0.9"');
     expect(r.body).toContain("Политике обработки персональных данных");
     expect(r.body).not.toMatch(/принима\w+ Политик/i);
   });

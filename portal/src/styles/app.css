@@ -29,15 +29,20 @@ body {
   padding: 40px;
 }
 
+/* Шапка карточки — артборд A1: знак 28x28 и надпись рядом.
+   Прежние 12px золотом без знака макету не отвечали. */
 .brand {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 800;
   letter-spacing: 0.12em;
-  color: var(--gold-500);
-  text-align: center;
-  margin: 0 0 24px;
+  color: #1D4735;
+  margin: 0 0 40px;
 }
+.brand img { display: block; }
 
 h1 {
   font-size: 24px;
@@ -53,13 +58,45 @@ h1 {
   margin: 0 0 28px;
 }
 
-.providers { display: grid; gap: 10px; }
+.providers-title {
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900, #142018);
+  text-align: center;
+}
+.providers { display: flex; justify-content: center; gap: 20px; width: 100%; }
+.provider {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; width: 76px;
+}
+.provider-name {
+  font-size: 12.5px; line-height: 1.4; color: #5F6C64; text-align: center;
+}
+.provider-disc {
+  width: 56px; height: 56px; flex-shrink: 0; padding: 0;
+  border-radius: 999px;
+  background-color: var(--white);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(20, 32, 24, 0.04);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 26px;
+  cursor: pointer;
+}
+.provider-disc[data-provider="yandex"] { background-image: url("/assets/yandex-id.png"); }
+.provider-disc[data-provider="tid"]    { background-image: url("/assets/t-id.svg"); }
+.provider-disc[data-provider="sberid"] { background-image: url("/assets/sber-mark.png"); }
+.provider-disc[data-provider="vkid"]   { background-image: url("/assets/vk-id-blue.svg"); }
 
-/* Кнопки провайдеров визуально равны между собой: ни размером, ни
-   цветом, ни порядком не выделен ни один (задание 08 §4.1).
-   Вид — нейтральный, дизайн-системы СИМПАС: брендбуки провайдеров
-   не проверены, и место под знак 20x20 оставлено так, чтобы фирменная
-   кнопка встала без перекомпоновки экрана. */
+/* Знаки провайдеров — артборд A1: круг 56px, знак внутри 26px
+   (56 x 0.46), подпись под кругом. Провайдеры визуально равны между
+   собой: ни размером, ни цветом, ни порядком не выделен ни один
+   (задание 08 §4.1).
+
+   Раньше здесь стояли широкие кнопки в столбик с пустым серым
+   квадратом вместо знака — я решил, что брендбуков нет, и не
+   посмотрел в design/assets, где они лежали всё это время. */
 .provider-button {
   display: flex;
   align-items: center;

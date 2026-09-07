@@ -216,9 +216,13 @@ describe("M1 и M3 — коммуникации", () => {
     expect(screen.getByRole("button", { name: "Отключить всю рекламу" })).toBeVisible();
   });
 
-  it("рядом с блоком названа редакция согласия", () => {
+  it("номер редакции на экране не называется", () => {
+    // Решение учредителя 07.09.2026: номера редакций с экранов убраны.
+    // В макете их и не было — они были дописаны в реализации.
+    // Что именно принято, доказывается записью в журнале согласий и
+    // ссылкой на неизменяемый адрес редакции, а не надписью.
     render(<Communications communications={off} termsVersion="0.9" returnTo="practice" />);
-    expect(screen.getByText(/редакция 0.9/)).toBeVisible();
+    expect(document.body.textContent).not.toMatch(/редакция/i);
   });
 
   it("SMS и звонков среди каналов нет", () => {
@@ -237,14 +241,19 @@ describe("M1 и M3 — коммуникации", () => {
 });
 
 describe("N1 — данные и приватность", () => {
-  it("ссылка ведёт на принятую редакцию, а не на текущую", () => {
+  it("ссылка ведёт на ПРИНЯТУЮ редакцию, а не на текущую", () => {
+    // Номер редакции с экрана убран, но человек обязан иметь
+    // возможность посмотреть именно ту редакцию, которую принял, —
+    // даже когда действует уже следующая. Это и есть доказательство,
+    // а не надпись.
     render(<Privacy returnTo="practice" documents={[
       { document_code: "cmpas_terms", title: "Пользовательское соглашение СИМПАС",
         version: "0.9", accepted_at: "2026-03-12T09:00:00Z", url: "/legal/terms/0.9" },
     ]} />);
     const link = screen.getByRole("link", { name: "Посмотреть текст" });
     expect(link).toHaveAttribute("href", "/legal/terms/0.9");
-    expect(screen.getByText(/Пользовательское соглашение СИМПАС, редакция 0.9/)).toBeVisible();
+    expect(screen.getByText("Пользовательское соглашение СИМПАС")).toBeVisible();
+    expect(document.body.textContent).not.toMatch(/редакция/i);
   });
 
   it("портал не дублирует «Мои данные», а ведёт на него", () => {

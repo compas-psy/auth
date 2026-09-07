@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { signIn, type ProductCode, type ProviderCode } from "@wording";
+import { signIn, PROVIDER_NAMES, type ProductCode, type ProviderCode } from "@wording";
 
 export interface SignInProps {
   service: ProductCode;
@@ -49,7 +49,10 @@ export function SignIn({
   return (
     <div className="screen">
       <main className="card">
-        <p className="brand">{signIn.brand}</p>
+        <p className="brand">
+          <img src="/assets/simpas-mark.svg" alt="" width={28} height={28} />
+          {signIn.brand}
+        </p>
         <h1>{signIn.title(service)}</h1>
         <p className="subtitle">{signIn.subtitle}</p>
 
@@ -57,20 +60,27 @@ export function SignIn({
             Почта вторым, БЕЗ свёртки. */}
         <div data-block="providers">
           {providers.length > 0 && (
-            <div className="providers">
-              {providers.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  data-provider={p}
-                  className="provider-button"
-                  onClick={() => onProvider?.(p)}
-                >
-                  <span className="provider-mark" aria-hidden="true" />
-                  {signIn.providerButton(p)}
-                </button>
-              ))}
-            </div>
+            <>
+              <p className="providers-title">{signIn.providersTitle}</p>
+              {/* Знаки в ряд, подпись под каждым — артборд A1. Кнопки в
+                  столбик, стоявшие здесь раньше, макету не отвечали, а
+                  место под знак было пустым квадратом: знаки всё это
+                  время лежали в design/assets. */}
+              <div className="providers">
+                {providers.map((p) => (
+                  <span key={p} className="provider">
+                    <button
+                      type="button"
+                      data-provider={p}
+                      className="provider-disc"
+                      aria-label={signIn.providerButton(p)}
+                      onClick={() => onProvider?.(p)}
+                    />
+                    <span className="provider-name">{PROVIDER_NAMES[p]}</span>
+                  </span>
+                ))}
+              </div>
+            </>
           )}
           {/* Строка присутствует на всех артбордах входа, в том числе
               когда ни один провайдер не подключён: она объясняет, что

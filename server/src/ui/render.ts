@@ -63,7 +63,8 @@ function noScriptBody(screen: string, state: ScreenState): string {
     const version = String(state.termsVersion ?? "0.9");
     const service = String(state.service ?? "practice") as keyof typeof SERVICE_TITLES;
     return `<div class="screen"><main class="card">
-<p class="brand">${escapeHtml(signIn.brand)}</p>
+<p class="brand"><img src="/assets/simpas-mark.svg" alt="" width="28" height="28"
+ >${escapeHtml(signIn.brand)}</p>
 <h1>${escapeHtml(SERVICE_TITLES[service] ?? SERVICE_TITLES.practice)}</h1>
 <p class="subtitle">${escapeHtml(signIn.subtitle)}</p>
 <p class="provider-notice">${escapeHtml(signIn.providerNotice)}</p>
@@ -131,9 +132,11 @@ const SERVICE_TITLES = {
  */
 function legalLine(version: string): string {
   const v = escapeHtml(version);
+  // Номер редакции на экране не называется: в макете его нет. Ссылка
+  // при этом ведёт на КОНКРЕТНУЮ редакцию, и она же пишется в согласие.
   return `<p class="legal" data-testid="legal-line">Продолжая, вы принимаете ` +
-    `<a href="/legal/terms/${v}">${escapeHtml(signIn.legalTermsLinkText)}</a>, ` +
-    `редакция ${v}. Как мы обращаемся с данными — в ` +
+    `<a href="/legal/terms/${v}">${escapeHtml(signIn.legalTermsLinkText)}</a>. ` +
+    `Как мы обращаемся с данными — в ` +
     `<a href="/legal/privacy/${v}">${escapeHtml(signIn.legalPrivacyLinkText)}</a>.</p>`;
 }
 
