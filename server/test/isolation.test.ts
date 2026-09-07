@@ -243,3 +243,26 @@ describe("зависимости боевого кода", () => {
     expect(imported.length).toBeGreaterThan(3);
   });
 });
+
+describe("почтовый отправитель", () => {
+  it("релей задан значением по умолчанию: учредителю нечего прописывать", () => {
+    // Р-3. Если бы адрес релея приходил только из секрета, письмо не
+    // ушло бы до тех пор, пока человек его не заведёт.
+    const env = compose.services.app!.environment as Record<string, string>;
+    expect(env.SMTP_HOST).toContain("host.docker.internal");
+    expect(env.MAIL_FROM).toContain("cmpas.ru");
+  });
+
+  it("контейнер видит хост: без этого имени релея в нём нет", () => {
+    const app = compose.services.app as unknown as { extra_hosts?: string[] };
+    expect(app.extra_hosts).toContain("host.docker.internal:host-gateway");
+  });
+
+  it("отправитель — с нашего домена, а не с чужого", () => {
+    // Релей соседа принимает только домен cmpas.ru
+    // (ALLOWED_SENDER_DOMAINS в его compose): чужой отправитель просто
+    // не будет принят.
+    const env = compose.services.app!.environment as Record<string, string>;
+    expect(env.MAIL_FROM).toMatch(/@cmpas\.ru>?\}?$/);
+  });
+});
