@@ -194,6 +194,44 @@ jobs:
             fail=1
           fi
 
+          # 6) Дверь открывается. Discovery и /healthz отвечают и тогда,
+          # когда войти нельзя: ровно так и было, пока не обрабатывался
+          # шаг разрешения. Здесь начинается настоящий вход — запрос
+          # авторизации от зарегистрированного клиента — и проверяется,
+          # что человек попадает на экран входа, а не в ошибку.
+          AUTHQ="client_id=practice-web&response_type=code"
+          AUTHQ="$AUTHQ&redirect_uri=https%3A%2F%2Fcmpas.ru%2Fapi%2Fauth%2Fcallback%2Fsimpasid"
+          AUTHQ="$AUTHQ&scope=openid+email&state=probe&nonce=probe"
+          AUTHQ="$AUTHQ&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+          AUTHQ="$AUTHQ&code_challenge_method=S256"
+
+          # -c/-b: провайдер ведёт взаимодействие через cookie, без них
+          # экран не откроется даже при исправном сервисе.
+          jar=$(mktemp)
+          loc=$(curl -s -o /dev/null -c "$jar" -w '%{redirect_url}' --max-time 20 \
+            "https://auth.cmpas.ru/oidc/auth?$AUTHQ" || echo "")
+          note "запрос авторизации -> ${loc:-нет перенаправления}"
+          case "$loc" in
+            *"/interaction/"*)
+              screen=$(curl -s -b "$jar" --max-time 20 "$loc" || echo "")
+              if echo "$screen" | grep -q "Вход"; then
+                note "экран входа открывается"
+              else
+                echo "::error::по адресу взаимодействия нет экрана входа"; fail=1
+              fi
+              # Провайдер без ключей на экране не показывается — это
+              # требование, а не поломка. Поэтому сообщаем, а не валим.
+              echo "$screen" | grep -q "Яндекс" \
+                && note "способ входа «Яндекс» на экране есть" \
+                || note "внешних способов входа на экране нет (ключи не заведены)"
+              ;;
+            *)
+              echo "::error::запрос авторизации не привёл на экран входа: ${loc:-пусто}"
+              fail=1
+              ;;
+          esac
+          rm -f "$jar"
+
           exit $fail
 
       - name: Проверить, что сосед жив
