@@ -77,33 +77,14 @@ jobs:
             git reset --hard "$DEPLOY_SHA"
             echo "Выкладывается коммит $DEPLOY_SHA"
 
-            # Пароль базы заводится ОДИН раз и дальше живёт на сервере:
-            # он не в git и не в образе. Если секрет не передан, берём
-            # уже записанный — иначе перезапуск сменил бы пароль и
-            # отрезал приложение от собственной базы.
-            [ -f .env ] || touch .env
-            if [ -n "${SIMPASID_DB_PASSWORD:-}" ]; then
-              if grep -q '^SIMPASID_DB_PASSWORD=' .env; then
-                sed -i "s|^SIMPASID_DB_PASSWORD=.*|SIMPASID_DB_PASSWORD=${SIMPASID_DB_PASSWORD}|" .env
-              else
-                printf 'SIMPASID_DB_PASSWORD=%s\n' "${SIMPASID_DB_PASSWORD}" >> .env
-              fi
-            elif ! grep -q '^SIMPASID_DB_PASSWORD=' .env; then
-              # Ни от человека, ни из файла — заводим сами и запоминаем.
-              printf 'SIMPASID_DB_PASSWORD=%s\n' "$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)" >> .env
-            fi
-            # Ключи провайдеров: записываем только то, что пришло, и
-            # не затираем уже лежащее пустым значением.
-            for key in YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET; do
-              eval "value=\${$key:-}"
-              [ -n "$value" ] || continue
-              if grep -q "^${key}=" .env; then
-                sed -i "s|^${key}=.*|${key}=${value}|" .env
-              else
-                printf '%s=%s\n' "$key" "$value" >> .env
-              fi
-            done
-            chmod 600 .env
+            # Подготовка .env вынесена в файл репозитория: она
+            # проверяется тестом server/test/deploy.env.test.ts, а
+            # встроенная в рабочий процесс копия не проверяется ничем.
+            # Скрипт СЧИТЫВАЕТСЯ, а не запускается: он убирает
+            # подготовленные имена из окружения, а у docker compose
+            # окружение оболочки старше .env, и пустое значение молча
+            # перекрывает записанное в файле.
+            . ./deploy/prepare-env.sh
 
             # Свой проект Compose: -p simpasid. Стек соседа не затрагивается.
             docker compose --project-name simpasid up -d --build
