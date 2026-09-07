@@ -127,6 +127,58 @@ jobs:
 
             docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
 
+      # Задача 16, шаг 8. Успешная команда по ssh НЕ означает, что
+      # сервис доступен: между ними стоят nginx, TLS и перенаправление.
+      # Именно там auth.cmpas.ru какое-то время проксировал на чужой
+      # сервис, пока все команды выполнялись успешно.
+      - name: Проверить живой адрес
+        run: |
+          set -u
+          fail=0
+          note() { echo "$1"; }
+
+          # 1) Метаданные по HTTPS и верный issuer.
+          code=$(curl -s -o meta.json -w '%{http_code}' --max-time 20 \
+            https://auth.cmpas.ru/.well-known/openid-configuration || echo 000)
+          note "discovery -> $code"
+          if [ "$code" = "200" ]; then
+            issuer=$(jq -r .issuer meta.json)
+            note "issuer = $issuer"
+            [ "$issuer" = "https://auth.cmpas.ru" ] || { echo "::error::issuer не тот: $issuer"; fail=1; }
+            bad=$(jq -r '
+              to_entries[]
+              | select((.key | test("_(endpoint|uri)$"))
+                       and (.value | type == "string")
+                       and ((.value | startswith("https://auth.cmpas.ru/")) | not))
+              | "\(.key) = \(.value)"' meta.json)
+            [ -z "$bad" ] || { echo "::error::адреса не на нашем домене: $bad"; fail=1; }
+          else
+            echo "::error::метаданные недоступны по HTTPS"; fail=1
+          fi
+
+          # 2) HSTS: сервис идентичности не имеет права открываться по HTTP.
+          if curl -sI --max-time 20 https://auth.cmpas.ru/healthz \
+             | grep -qi "Strict-Transport-Security"; then
+            note "HSTS: есть"
+          else
+            echo "::error::заголовка Strict-Transport-Security нет"; fail=1
+          fi
+
+          # 3) Приход по HTTP уводится на HTTPS, а не обслуживается.
+          redir=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 http://auth.cmpas.ru/ || echo 000)
+          note "http:// -> $redir"
+          case "$redir" in 30*) ;; *) echo "::error::HTTP не перенаправляется на HTTPS ($redir)"; fail=1;; esac
+
+          # 4) Поверхность сервиса на живом адресе.
+          for pair in "/healthz 200" "/oidc/jwks 200" "/account 200" "/dev/ 200"; do
+            path=${pair% *}; want=${pair#* }
+            got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://auth.cmpas.ru$path" || echo 000)
+            note "$path -> $got (ожидалось $want)"
+            [ "$got" = "$want" ] || fail=1
+          done
+
+          exit $fail
+
       - name: Проверить, что сосед жив
         run: |
           # Публикация сервиса не имеет права задеть cmpas.ru. Проверка

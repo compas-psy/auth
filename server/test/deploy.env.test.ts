@@ -152,7 +152,7 @@ describe("подготовка .env перед docker compose", () => {
 describe("рабочий процесс выкладки", () => {
   const wf = parse(
     readFileSync(new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8"),
-  ) as { jobs: Record<string, { steps: { uses?: string; with?: { script?: string } }[] }> };
+  ) as { jobs: Record<string, { steps: { uses?: string; run?: string; with?: { script?: string } }[] }> };
 
   const script = wf.jobs.deploy!.steps.find((s) => s.uses?.startsWith("appleboy/ssh-action"))!
     .with!.script!;
@@ -165,6 +165,17 @@ describe("рабочий процесс выкладки", () => {
     // Ищем именно команду, а не слова «docker compose» в пояснении.
     expect(script.indexOf(". ./deploy/prepare-env.sh"))
       .toBeLessThan(script.indexOf("docker compose --project-name simpasid up"));
+  });
+
+  it("проверяет живой адрес, а не только код возврата ssh", () => {
+    // «Команда выполнена» и «сервис отвечает по своему адресу» — не
+    // одно и то же. Между ними стоит nginx, TLS и перенаправление,
+    // и именно там auth.cmpas.ru некоторое время проксировал на
+    // чужой сервис, пока команды выполнялись успешно.
+    const steps = wf.jobs.deploy!.steps.map((st) => st.run ?? "").join("\n");
+    expect(steps).toContain("https://auth.cmpas.ru/.well-known/openid-configuration");
+    expect(steps).toContain("Strict-Transport-Security");
+    expect(steps).toContain("https://cmpas.ru/");
   });
 
   it("встроенной правки .env через sed в рабочем процессе не осталось", () => {
