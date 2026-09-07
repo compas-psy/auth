@@ -102,12 +102,22 @@ jobs:
             #    запуск тихо оставлял сервис идентичности на HTTP, где
             #    Secure-cookie не живёт и вход не складывается вовсе.
             CONF=/etc/nginx/sites-available/auth.cmpas.ru
-            if ! grep -q "listen 443" "$CONF"; then
+
+            # ДИРЕКТИВА, а не любое упоминание. Проверка по подстроке
+            # «listen 443» находила КОММЕНТАРИЙ в этом же файле («certbot
+            # сам добавит listen 443») и всегда считала TLS настроенным:
+            # certbot не вызывался ни разу, шаг отчитывался успехом за
+            # три секунды, а сервис стоял без HTTPS. Комментарий
+            # начинается с #, под этот образец не попадает.
+            TLS_RE='^[[:space:]]*listen[[:space:]]+443'
+
+            if ! grep -Eq "$TLS_RE" "$CONF"; then
               if [ -e /etc/letsencrypt/live/auth.cmpas.ru/fullchain.pem ]; then
                 # Сертификат уже выпущен: только переустанавливаем его в
                 # конфигурацию. Перевыпуска нет — счётчики Let's Encrypt
                 # не тратятся, срок действия не сдвигается.
                 certbot install --nginx --cert-name auth.cmpas.ru --redirect \
+                  --non-interactive \
                   || echo "ВНИМАНИЕ: certbot install не справился." >&2
               else
                 certbot --nginx -d auth.cmpas.ru --non-interactive --agree-tos \
@@ -116,13 +126,19 @@ jobs:
               fi
             fi
 
-            # 4) Судим по итогу, а не по коду возврата certbot: важно,
-            #    что в конфигурации есть TLS, а не что команда не ругнулась.
-            if grep -q "listen 443" "$CONF" && nginx -t; then
+            # 4) Итог — это ОТВЕТ сервиса, а не строка в файле. Файл
+            #    показывает намерение; отвечает ли auth.cmpas.ru по
+            #    HTTPS, знает только запрос.
+            if grep -Eq "$TLS_RE" "$CONF" && nginx -t; then
               systemctl reload nginx
+            fi
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 \
+              https://auth.cmpas.ru/healthz || echo 000)
+            echo "https://auth.cmpas.ru/healthz -> $code"
+            if [ "$code" = "200" ]; then
               echo "OK: auth.cmpas.ru отвечает по HTTPS. cmpas.ru не тронут."
             else
-              echo "ОШИБКА: TLS для auth.cmpas.ru не установлен. Сервис идентичности" >&2
+              echo "ОШИБКА: auth.cmpas.ru не отвечает по HTTPS ($code). Сервис идентичности" >&2
               echo "по HTTP бесполезен: cookie помечена Secure и не сохранится." >&2
               echo "cmpas.ru при этом не задет — его конфигурация не читалась." >&2
               exit 1

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -237,10 +237,26 @@ describe("обустройство прокси и TLS", () => {
     expect(script).toContain("--cert-name auth.cmpas.ru");
   });
 
-  it("проверяет итог, а не намерение", () => {
-    // Успех certbot определяется наличием listen 443 в файле, а не
-    // кодом возврата: «ВНИМАНИЕ» в журнале никто не читает.
-    expect(script).toMatch(/grep -q ["']?listen 443/);
+  it("наличие TLS определяется директивой, а не упоминанием", () => {
+    // Проверка grep -q "listen 443" находила КОММЕНТАРИЙ в нашем же
+    // файле («certbot сам добавит listen 443») и потому всегда
+    // считала, что TLS настроен. Certbot не вызывался ни разу, шаг
+    // отчитывался успехом за три секунды, а сервис стоял без HTTPS.
+    // Здесь берётся ТОТ ЖЕ образец, что и в рабочем процессе, и
+    // прикладывается к нашему файлу, где директивы нет, а
+    // комментарий есть.
+    const m = /TLS_RE='([^']+)'/.exec(script);
+    expect(m).not.toBeNull();
+    const conf = fileURLToPath(new URL("../../deploy/proxy/auth.cmpas.ru.conf", import.meta.url));
+    expect(readFileSync(conf, "utf8")).toContain("listen 443");
+    const found = spawnSync("grep", ["-Eq", m![1]!, conf]).status;
+    expect({ образец: m![1]!, нашёл: found === 0 }).toEqual({ образец: m![1]!, нашёл: false });
+  });
+
+  it("итог подтверждается запросом, а не чтением файла", () => {
+    // Файл — это намерение. Отвечает ли сервис по HTTPS, показывает
+    // только запрос.
+    expect(script).toContain("https://auth.cmpas.ru/healthz");
   });
 
   it("падает, если TLS так и не встал", () => {
