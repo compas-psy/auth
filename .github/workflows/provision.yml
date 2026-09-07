@@ -43,50 +43,54 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Загрузить ключ
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
-
+      # Те же действия, какими сосед уже обустраивает moments.cmpas.ru
+      # на этом сервере теми же секретами. Своё подключение через голый
+      # ssh отказывало на publickey.
       - name: Передать конфигурацию прокси
-        run: |
-          scp -i ~/.ssh/deploy_key \
-            deploy/proxy/auth.cmpas.ru.conf \
-            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/auth.cmpas.ru.conf"
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: deploy/proxy/auth.cmpas.ru.conf
+          target: /tmp/simpasid-proxy
+          strip_components: 2
 
       - name: Установить vhost и выпустить TLS
-        run: |
-          ssh -i ~/.ssh/deploy_key "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" 'bash -s' <<'REMOTE'
-          set -euo pipefail
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          command_timeout: 10m
+          script: |
+            set -euo pipefail
 
-          # 1) Ставим только свой файл. Чужие не читаем и не трогаем.
-          install -m 644 /tmp/auth.cmpas.ru.conf /etc/nginx/sites-available/auth.cmpas.ru
+            # 1) Ставим только свой файл. Чужие не читаем и не трогаем.
+            install -m 644 /tmp/simpasid-proxy/auth.cmpas.ru.conf \
+              /etc/nginx/sites-available/auth.cmpas.ru
 
-          # 2) Включаем и проверяем ВЕСЬ конфиг. Не прошло — откатываем
-          #    включение, чтобы в sites-enabled осталось только рабочее.
-          ln -sf /etc/nginx/sites-available/auth.cmpas.ru /etc/nginx/sites-enabled/auth.cmpas.ru
-          if nginx -t; then
-            systemctl reload nginx
-            echo "OK: vhost auth.cmpas.ru включён, nginx перезагружен. cmpas.ru не тронут."
-          else
-            rm -f /etc/nginx/sites-enabled/auth.cmpas.ru
-            echo "ОШИБКА: nginx -t не прошёл. Включение откачено, nginx НЕ перезагружен, cmpas.ru без изменений." >&2
-            exit 1
-          fi
+            # 2) Включаем и проверяем ВЕСЬ конфиг. Не прошло — откатываем
+            #    включение, чтобы в sites-enabled осталось только рабочее.
+            ln -sf /etc/nginx/sites-available/auth.cmpas.ru \
+              /etc/nginx/sites-enabled/auth.cmpas.ru
+            if nginx -t; then
+              systemctl reload nginx
+              echo "OK: vhost auth.cmpas.ru включён, nginx перезагружен. cmpas.ru не тронут."
+            else
+              rm -f /etc/nginx/sites-enabled/auth.cmpas.ru
+              echo "ОШИБКА: nginx -t не прошёл. Включение откачено, nginx НЕ перезагружен, cmpas.ru без изменений." >&2
+              exit 1
+            fi
 
-          # 3) Сертификат — только если его ещё нет, и только на наш домен.
-          if [ ! -e /etc/letsencrypt/live/auth.cmpas.ru/fullchain.pem ]; then
-            certbot --nginx -d auth.cmpas.ru --non-interactive --agree-tos \
-              -m admin@cmpas.ru --redirect \
-              && echo "OK: сертификат для auth.cmpas.ru выпущен." \
-              || echo "ВНИМАНИЕ: certbot не справился — сервис пока по HTTP. Повторите запуск после появления A-записи. cmpas.ru не задет."
-          else
-            echo "Сертификат для auth.cmpas.ru уже есть, certbot пропущен."
-          fi
-          REMOTE
-
-      - name: Убрать ключ
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+            # 3) Сертификат — только если его ещё нет, и только на наш домен.
+            if [ ! -e /etc/letsencrypt/live/auth.cmpas.ru/fullchain.pem ]; then
+              certbot --nginx -d auth.cmpas.ru --non-interactive --agree-tos \
+                -m admin@cmpas.ru --redirect \
+                && echo "OK: сертификат для auth.cmpas.ru выпущен." \
+                || echo "ВНИМАНИЕ: certbot не справился — сервис пока по HTTP. Повторите запуск. cmpas.ru не задет."
+            else
+              echo "Сертификат для auth.cmpas.ru уже есть, certbot пропущен."
+            fi

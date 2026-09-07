@@ -35,80 +35,76 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Загрузить ключ
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
-
+      # Подключение сделано тем же действием, каким уже выкладывается
+      # cmpas.ru на этот же сервер теми же тремя секретами
+      # (.github/workflows/deploy-docker.yml соседа). Своё подключение
+      # через голый ssh отказывало на publickey: разбираться, чем именно
+      # отличается его обработка ключа, дешевле не начинать — берём то,
+      # что на этом сервере доказано работает.
       - name: Выложить
+        uses: appleboy/ssh-action@v1.0.3
         env:
           SIMPASID_DB_PASSWORD: ${{ secrets.SIMPASID_DB_PASSWORD }}
-          # Выкладывается ровно тот коммит, который запустил прогон, а не
-          # «то, что сейчас в ветке». Иначе между проверкой и выкладкой
-          # успевает влезть чужой пуш, и на сервер уезжает непроверенное.
-          # Заодно снимается зависимость от имени ветки по умолчанию.
+          # Выкладывается ровно тот коммит, который проверила сборка.
           DEPLOY_SHA: ${{ github.sha }}
-        run: |
-          ssh -i ~/.ssh/deploy_key \
-            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
-            "SIMPASID_DB_PASSWORD='${SIMPASID_DB_PASSWORD}' DEPLOY_SHA='${DEPLOY_SHA}' bash -s" <<'REMOTE'
-          set -euo pipefail
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          command_timeout: 30m
+          envs: SIMPASID_DB_PASSWORD,DEPLOY_SHA
+          script: |
+            set -euo pipefail
 
-          DIR=/var/www/auth.cmpas.ru
-          # Свой каталог, рядом с /var/www/cmpas.ru и /var/www/zapiski,
-          # но отдельный. Ни один файл соседа не читается и не пишется.
-          if [ ! -d "$DIR/.git" ]; then
-            mkdir -p "$DIR"
-            git init -q "$DIR"
-            git -C "$DIR" remote add origin https://github.com/compas-psy/auth
-          fi
-          cd "$DIR"
-          git fetch --depth 1 origin "$DEPLOY_SHA"
-          git reset --hard "$DEPLOY_SHA"
-          echo "Выкладывается коммит $DEPLOY_SHA"
-
-          # Пароль базы заводится ОДИН раз и дальше живёт на сервере:
-          # он не в git и не в образе. Если секрет не передан, берём
-          # уже записанный — иначе перезапуск сменил бы пароль и
-          # отрезал приложение от собственной базы.
-          if [ ! -f .env ]; then touch .env; fi
-          if [ -n "${SIMPASID_DB_PASSWORD:-}" ]; then
-            if grep -q '^SIMPASID_DB_PASSWORD=' .env; then
-              sed -i "s|^SIMPASID_DB_PASSWORD=.*|SIMPASID_DB_PASSWORD=${SIMPASID_DB_PASSWORD}|" .env
-            else
-              printf 'SIMPASID_DB_PASSWORD=%s\n' "${SIMPASID_DB_PASSWORD}" >> .env
+            DIR=/var/www/auth.cmpas.ru
+            # Свой каталог, рядом с /var/www/cmpas.ru и /var/www/zapiski,
+            # но отдельный. Ни один файл соседа не читается и не пишется.
+            if [ ! -d "$DIR/.git" ]; then
+              mkdir -p "$DIR"
+              git init -q "$DIR"
+              git -C "$DIR" remote add origin https://github.com/compas-psy/auth
             fi
-          elif ! grep -q '^SIMPASID_DB_PASSWORD=' .env; then
-            # Ни от человека, ни из файла — заводим сами и запоминаем.
-            printf 'SIMPASID_DB_PASSWORD=%s\n' "$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)" >> .env
-          fi
-          chmod 600 .env
+            cd "$DIR"
+            git fetch --depth 1 origin "$DEPLOY_SHA"
+            git reset --hard "$DEPLOY_SHA"
+            echo "Выкладывается коммит $DEPLOY_SHA"
 
-          # Свой проект Compose: -p simpasid. Стек соседа не затрагивается.
-          docker compose --project-name simpasid up -d --build
-
-          # Ждём, пока проверка здоровья скажет, что сервис поднялся.
-          for i in $(seq 1 60); do
-            if curl -fsS --max-time 5 http://127.0.0.1:3100/healthz >/dev/null 2>&1; then
-              echo "OK: сервис отвечает на /healthz."
-              break
+            # Пароль базы заводится ОДИН раз и дальше живёт на сервере:
+            # он не в git и не в образе. Если секрет не передан, берём
+            # уже записанный — иначе перезапуск сменил бы пароль и
+            # отрезал приложение от собственной базы.
+            [ -f .env ] || touch .env
+            if [ -n "${SIMPASID_DB_PASSWORD:-}" ]; then
+              if grep -q '^SIMPASID_DB_PASSWORD=' .env; then
+                sed -i "s|^SIMPASID_DB_PASSWORD=.*|SIMPASID_DB_PASSWORD=${SIMPASID_DB_PASSWORD}|" .env
+              else
+                printf 'SIMPASID_DB_PASSWORD=%s\n' "${SIMPASID_DB_PASSWORD}" >> .env
+              fi
+            elif ! grep -q '^SIMPASID_DB_PASSWORD=' .env; then
+              # Ни от человека, ни из файла — заводим сами и запоминаем.
+              printf 'SIMPASID_DB_PASSWORD=%s\n' "$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)" >> .env
             fi
-            if [ "$i" = "60" ]; then
-              echo "ОШИБКА: сервис не поднялся за две минуты." >&2
-              docker compose --project-name simpasid logs --tail 200 app >&2 || true
-              exit 1
-            fi
-            sleep 2
-          done
+            chmod 600 .env
 
-          docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
-          REMOTE
+            # Свой проект Compose: -p simpasid. Стек соседа не затрагивается.
+            docker compose --project-name simpasid up -d --build
 
-      - name: Убрать ключ
-        if: always()
-        run: rm -f ~/.ssh/deploy_key
+            # Ждём, пока проверка здоровья скажет, что сервис поднялся.
+            for i in $(seq 1 60); do
+              if curl -fsS --max-time 5 http://127.0.0.1:3100/healthz >/dev/null 2>&1; then
+                echo "OK: сервис отвечает на /healthz."
+                break
+              fi
+              if [ "$i" = "60" ]; then
+                echo "ОШИБКА: сервис не поднялся за две минуты." >&2
+                docker compose --project-name simpasid logs --tail 200 app >&2 || true
+                exit 1
+              fi
+              sleep 2
+            done
+
+            docker image prune -f --filter "until=168h" >/dev/null 2>&1 || true
 
       - name: Проверить, что сосед жив
         run: |
