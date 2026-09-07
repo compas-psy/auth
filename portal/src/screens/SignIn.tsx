@@ -112,7 +112,7 @@ export function SignIn({
         <p className="legal" data-testid="legal-line">
           Продолжая, вы принимаете{" "}
           <a href={`/legal/terms/${termsVersion}`}>{signIn.legalTermsLinkText}</a>
-          {`, редакция ${termsVersion}. Как мы обращаемся с данными — в `}
+          {". Как мы обращаемся с данными — в "}
           <a href={`/legal/privacy/${termsVersion}`}>{signIn.legalPrivacyLinkText}</a>.
         </p>
       </main>

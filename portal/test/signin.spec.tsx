@@ -6,6 +6,7 @@ import { CheckEmail } from "../src/screens/CheckEmail";
 import { EnterCode } from "../src/screens/EnterCode";
 import { EmailRequired } from "../src/screens/EmailRequired";
 import { SignInUnavailable, IdentityTaken } from "../src/screens/Errors";
+import { signIn } from "@wording";
 
 const base = {
   service: "practice" as const,
@@ -28,9 +29,13 @@ describe("экран входа: юридическая конструкция",
     expect(legal).not.toMatch(/принима\w+ Политик/i);
   });
 
-  it("названа редакция принимаемого документа", () => {
+  it("редакция принимаемого документа НЕ называется", () => {
+    // Решение учредителя 07.09.2026. В макете этой надписи нет — она
+    // была дописана в реализации. Ссылка ниже по-прежнему ведёт на
+    // конкретную редакцию: доказательство — она и запись в журнале
+    // согласий, а не текст на экране.
     render(<SignIn {...base} providers={["yandex"]} />);
-    expect(screen.getByTestId("legal-line").textContent).toContain("редакция 0.9");
+    expect(screen.getByTestId("legal-line").textContent).not.toContain("редакция");
   });
 
   it("ссылки ведут на конкретную редакцию, а не на текущую", () => {
@@ -226,3 +231,32 @@ describe("поведение формы почты", () => {
 });
 
 afterEach(() => cleanup());
+
+describe("юридическая строка совпадает со словарём дословно", () => {
+  it("на экране ровно тот текст, что записан в словаре", () => {
+    // Строка жила В ДВУХ местах: в серверной разметке и зашитой в этом
+    // компоненте. Я поправил первую и решил, что дело сделано, — а
+    // человек видит вторую: разметку заменяет скрипт. Проверка на
+    // сервере при этом была зелёной.
+    //
+    // Теперь видимый текст сверяется со словарём целиком, и разъехаться
+    // им незаметно уже нельзя.
+    render(<SignIn {...base} />);
+    const line = screen.getByTestId("legal-line");
+    expect(line.textContent?.replace(/\s+/g, " ").trim())
+      .toBe(`${signIn.legalAccept()} ${signIn.legalPrivacy}`);
+  });
+
+  it("номера редакции на экране нет", () => {
+    render(<SignIn {...base} />);
+    expect(document.body.textContent).not.toMatch(/редакция/i);
+  });
+
+  it("ссылки ведут на конкретную редакцию", () => {
+    // Убрана надпись, не доказательство.
+    render(<SignIn {...base} />);
+    const links = screen.getByTestId("legal-line").querySelectorAll("a");
+    expect([...links].map((a) => a.getAttribute("href")))
+      .toEqual(["/legal/terms/0.9", "/legal/privacy/0.9"]);
+  });
+});
