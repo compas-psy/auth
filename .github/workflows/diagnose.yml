@@ -46,3 +46,24 @@ jobs:
             echo
             echo "== контейнеры =="
             docker ps --format '{{.Names}}\t{{.Ports}}'
+            echo
+            echo "== включённые vhost =="
+            ls -l /etc/nginx/sites-enabled/
+            echo
+            echo "== наш блок в действующей конфигурации =="
+            # nginx -T печатает то, с чем nginx РАБОТАЕТ, а не то, что
+            # лежит в файле: после certbot это не одно и то же.
+            nginx -T 2>/dev/null \
+              | grep -nE "server_name auth|listen |ssl_certificate|proxy_pass|return 301" \
+              | grep -A6 -B6 "auth.cmpas.ru" || echo "блок auth.cmpas.ru в действующей конфигурации не найден"
+            echo
+            echo "== что в файле vhost =="
+            grep -nE "listen|server_name|ssl_certificate|proxy_pass|return" \
+              /etc/nginx/sites-available/auth.cmpas.ru || true
+            echo
+            echo "== сертификаты =="
+            certbot certificates 2>/dev/null | grep -A4 "auth.cmpas.ru" || echo "сертификата auth.cmpas.ru нет"
+            echo
+            echo "== что отвечает сам сервер =="
+            curl -sI --max-time 10 https://auth.cmpas.ru/healthz | head -3 || echo "HTTPS с самого сервера не отвечает"
+            curl -s -o /dev/null -w 'локально 3200 -> %{http_code}\n' --max-time 5 http://127.0.0.1:3200/healthz || true
