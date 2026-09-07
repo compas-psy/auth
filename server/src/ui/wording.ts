@@ -29,6 +29,23 @@ export const PRODUCT_ACCUSATIVE = {
   steps: "ШАГИ",
 } as const;
 
+/**
+ * Перечисление продуктов для подписей экранов.
+ *
+ * Собирается, а не пишется буквами. Сегодня ШАГИ пришлось дописывать в
+ * четырёх местах — перечень в коде, ограничение схемы, список в оболочке
+ * регистрации, подсказка командной строки, — и пятый продукт снова
+ * искали бы глазами по всему репозиторию.
+ *
+ * `last` — союз перед последним: «А, Б и В» там, где так говорят
+ * по-русски, и просто запятая там, где макет перечисляет через запятую.
+ */
+function listOf(names: Record<ProductCode, string>, last: string): string {
+  const all = (Object.keys(PRODUCT_NAMES) as ProductCode[]).map((p) => names[p]);
+  if (all.length < 2) return all.join("");
+  return `${all.slice(0, -1).join(", ")}${last}${all[all.length - 1]}`;
+}
+
 export const PROVIDER_NAMES = {
   yandex: "Яндекс ID",
   tid: "T-ID",
@@ -41,7 +58,12 @@ export type ProviderCode = keyof typeof PROVIDER_NAMES;
 export const signIn = {
   brand: "СИМПАС",
   title: (product: ProductCode) => `Вход в ${PRODUCT_ACCUSATIVE[product]}`,
-  subtitle: "Один аккаунт СИМПАС — ПРАКТИКА, ЗАПИСКИ, МОМЕНТЫ.",
+  /**
+   * ШАГИ добавлены решением учредителя 07.09.2026. Это ОТСТУПЛЕНИЕ от
+   * дословного текста макета (08_AUTH_DESIGN_BRIEF.md §268), где
+   * продуктов три; отступление разрешено прямо, а не додумано.
+   */
+  subtitle: `Один аккаунт СИМПАС — ${listOf(PRODUCT_NAMES, ", ")}.`,
   providerButton: (p: ProviderCode) => `Войти через ${PROVIDER_NAMES[p]}`,
   /**
    * Строка про провайдера. Постоянная, не подсказка, и присутствует на
@@ -140,7 +162,9 @@ export const errors = {
 export const account = {
   backTo: (product: ProductCode) => `Вернуться в ${PRODUCT_ACCUSATIVE[product]}`,
   title: "Аккаунт СИМПАС",
-  subtitle: "Один аккаунт на ПРАКТИКУ, ЗАПИСКИ и МОМЕНТЫ.",
+  // ШАГИ добавлены тем же решением; макет (09_ACCOUNT_DESIGN_ADDENDUM.md
+  // §240) перечисляет три продукта через «и» перед последним.
+  subtitle: `Один аккаунт на ${listOf(PRODUCT_ACCUSATIVE, " и ")}.`,
   cards: {
     personal: { title: "Личные данные", hint: "Имя, почта" },
     security: { title: "Безопасность", hint: "Способы входа, устройства" },

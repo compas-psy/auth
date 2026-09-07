@@ -168,6 +168,20 @@ describe("вход насквозь: от кнопки до id_token", () => {
     expect(verified.payload.nonce, "nonce не вернулся — защита от повтора").toBe("nc-42");
     expect(verified.payload.sub, "нет sub — продукту не по чему опознать человека").toBeTruthy();
     expect(verified.payload.email).toBe("e2e@ya.ru");
+
+    // ОБЯЗАТЕЛЬСТВО ПЕРЕД ПРОДУКТОМ, а не деталь реализации.
+    //
+    // ПРАКТИКА проверяет email_verified СТРОГО: принимается только явное
+    // true, отсутствующий claim — отказ (issue #132, ответ агента от
+    // 07.09.2026). Значит пропажа этого claim'а не «ослабит проверку», а
+    // ОСТАНОВИТ все входы через единый вход.
+    //
+    // Пропасть он может тихо: у oidc-provider по умолчанию в id_token
+    // кладётся только sub, и достаточно вернуть conformIdTokenClaims к
+    // умолчанию, чтобы всё сломалось при зелёных тестах. До этой
+    // проверки закреплён был только email.
+    expect(verified.payload.email_verified,
+      "email_verified пропал из id_token — вход в ПРАКТИКУ остановится").toBe(true);
   });
 
   it("в id_token нет ни ролей, ни тарифов, ни ФИО", async () => {
