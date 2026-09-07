@@ -74,3 +74,11 @@ jobs:
         run: docker build -t simpasid:ci --target runner .
       # Сборка образа — тоже проверка: она ловит расхождение между тем,
       # что собирается локально, и тем, что уедет на сервер.
+
+  deploy:
+    name: Выкладка
+    # В бой уезжает только то, что прошло И тесты, И сборку образа.
+    needs: [test, image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
