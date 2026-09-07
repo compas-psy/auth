@@ -207,3 +207,40 @@ describe("осмотр сервера", () => {
     expect(script).not.toMatch(/\bps\s+(aux|-ef)/);
   });
 });
+
+describe("обустройство прокси и TLS", () => {
+  const wf = parse(
+    readFileSync(new URL("../../.github/workflows/provision.yml", import.meta.url), "utf8"),
+  ) as { jobs: Record<string, { steps: { uses?: string; with?: { script?: string } }[] }> };
+  const script = wf.jobs.provision!.steps.find((st) => st.uses?.startsWith("appleboy/ssh-action"))!
+    .with!.script!;
+
+  it("возвращает TLS после того, как перезаписал конфигурацию", () => {
+    // Ловушка: install перезаписывает файл нашей версией, а блок
+    // listen 443 в него дописал certbot при первом выпуске. Условие
+    // «сертификат уже есть» пропускало certbot — и сервис
+    // идентичности тихо съезжал на HTTP, где Secure-cookie не живёт.
+    // certbot install переустанавливает уже выпущенный сертификат,
+    // ничего не перевыпуская.
+    expect(script).toContain("certbot install");
+    expect(script).toContain("--cert-name auth.cmpas.ru");
+  });
+
+  it("проверяет итог, а не намерение", () => {
+    // Успех certbot определяется наличием listen 443 в файле, а не
+    // кодом возврата: «ВНИМАНИЕ» в журнале никто не читает.
+    expect(script).toMatch(/grep -q ["']?listen 443/);
+  });
+
+  it("падает, если TLS так и не встал", () => {
+    const tail = script.slice(script.lastIndexOf("listen 443"));
+    expect(tail).toContain("exit 1");
+  });
+
+  it("перезагружает nginx только после успешной проверки конфигурации", () => {
+    for (const m of script.matchAll(/systemctl reload nginx/g)) {
+      const before = script.slice(0, m.index);
+      expect(before).toContain("nginx -t");
+    }
+  });
+});

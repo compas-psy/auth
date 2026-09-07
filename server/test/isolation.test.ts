@@ -131,8 +131,59 @@ describe("конфигурация прокси", () => {
     expect(conf).toMatch(/client_max_body_size\s+64k;/);
   });
 
-  it("проксирует на петлю, а не на чужой порт", () => {
-    expect(conf).toContain("proxy_pass http://127.0.0.1:3100");
-    expect(conf).not.toContain(":3000");
+  it("проксирует на петлю, а не наружу", () => {
+    // Конкретный номер здесь не зашивается: он выводится из
+    // docker-compose.yml проверкой «порт на петле» ниже. Два места с
+    // одним числом однажды разъедутся, и разъезд будет тихим.
+    for (const t of conf.matchAll(/proxy_pass\s+http:\/\/([^;\/]+)/g)) {
+      expect(t[1]).toMatch(/^127\.0\.0\.1:\d+$/);
+    }
+  });
+});
+
+/**
+ * Порты соседей на петле этого сервера. Список снят осмотром
+ * (рабочий процесс «Осмотр сервера», прогон 34108490636), а не
+ * предположен: 3000 — cmpas-app (ПРАКТИКА), 3100 — zapiski-api
+ * (ЗАПИСКИ), 3306 — mysqld, 1080 — cmpas-singbox.
+ */
+const NEIGHBOUR_PORTS = [25, 80, 443, 1080, 3000, 3100, 3306, 33060];
+
+describe("порт на петле", () => {
+  const proxyConf = readFileSync(
+    new URL("../../deploy/proxy/auth.cmpas.ru.conf", import.meta.url), "utf8");
+  const deployWf = readFileSync(
+    new URL("../../.github/workflows/deploy.yml", import.meta.url), "utf8");
+
+  /** Порт, который compose занимает на хосте. Единственный первоисточник. */
+  const published = (compose.services.app!.ports ?? [])
+    .map((p) => /^127\.0\.0\.1:(\d+):\d+$/.exec(p))
+    .filter((m): m is RegExpExecArray => m !== null)
+    .map((m) => Number(m[1]));
+
+  it("публикуется ровно один порт", () => {
+    expect(published).toHaveLength(1);
+  });
+
+  it("порт не отобран у соседа", () => {
+    // Выкладка 719a773 встала на «Bind for 127.0.0.1:3100 failed:
+    // port is already allocated»: 3100 держит zapiski-api. Занять
+    // чужой порт нельзя, а «освободить» — тем более.
+    expect(NEIGHBOUR_PORTS).not.toContain(published[0]);
+  });
+
+  it("nginx проксирует ровно на тот порт, который compose публикует", () => {
+    // Расхождение здесь тише и хуже занятого порта: домен молча
+    // отдаёт чужой сервис. Пока nginx смотрел на 3100, auth.cmpas.ru
+    // проксировал на ЗАПИСКИ.
+    const targets = [...proxyConf.matchAll(/proxy_pass\s+http:\/\/127\.0\.0\.1:(\d+)/g)]
+      .map((m) => Number(m[1]));
+    expect(targets.length).toBeGreaterThan(0);
+    for (const t of targets) expect(t).toBe(published[0]);
+  });
+
+  it("проверка здоровья при выкладке не содержит порта отдельным числом", () => {
+    // Иначе появляется четвёртое место, где порт можно забыть.
+    expect(deployWf).not.toMatch(/127\.0\.0\.1:\d+\/healthz/);
   });
 });

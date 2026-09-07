@@ -95,12 +95,35 @@ jobs:
               exit 1
             fi
 
-            # 3) Сертификат — только если его ещё нет, и только на наш домен.
-            if [ ! -e /etc/letsencrypt/live/auth.cmpas.ru/fullchain.pem ]; then
-              certbot --nginx -d auth.cmpas.ru --non-interactive --agree-tos \
-                -m admin@cmpas.ru --redirect \
-                && echo "OK: сертификат для auth.cmpas.ru выпущен." \
-                || echo "ВНИМАНИЕ: certbot не справился — сервис пока по HTTP. Повторите запуск. cmpas.ru не задет."
+            # 3) TLS. Блок listen 443 в файл дописывает certbot, а шаг 1
+            #    только что перезаписал файл нашей версией — значит при
+            #    каждом повторном обустройстве TLS надо возвращать. Раньше
+            #    здесь стояло условие «сертификата ещё нет», и повторный
+            #    запуск тихо оставлял сервис идентичности на HTTP, где
+            #    Secure-cookie не живёт и вход не складывается вовсе.
+            CONF=/etc/nginx/sites-available/auth.cmpas.ru
+            if ! grep -q "listen 443" "$CONF"; then
+              if [ -e /etc/letsencrypt/live/auth.cmpas.ru/fullchain.pem ]; then
+                # Сертификат уже выпущен: только переустанавливаем его в
+                # конфигурацию. Перевыпуска нет — счётчики Let's Encrypt
+                # не тратятся, срок действия не сдвигается.
+                certbot install --nginx --cert-name auth.cmpas.ru --redirect \
+                  || echo "ВНИМАНИЕ: certbot install не справился." >&2
+              else
+                certbot --nginx -d auth.cmpas.ru --non-interactive --agree-tos \
+                  -m admin@cmpas.ru --redirect \
+                  || echo "ВНИМАНИЕ: выпуск сертификата не удался." >&2
+              fi
+            fi
+
+            # 4) Судим по итогу, а не по коду возврата certbot: важно,
+            #    что в конфигурации есть TLS, а не что команда не ругнулась.
+            if grep -q "listen 443" "$CONF" && nginx -t; then
+              systemctl reload nginx
+              echo "OK: auth.cmpas.ru отвечает по HTTPS. cmpas.ru не тронут."
             else
-              echo "Сертификат для auth.cmpas.ru уже есть, certbot пропущен."
+              echo "ОШИБКА: TLS для auth.cmpas.ru не установлен. Сервис идентичности" >&2
+              echo "по HTTP бесполезен: cookie помечена Secure и не сохранится." >&2
+              echo "cmpas.ru при этом не задет — его конфигурация не читалась." >&2
+              exit 1
             fi

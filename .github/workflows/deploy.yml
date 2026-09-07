@@ -86,12 +86,34 @@ jobs:
             # перекрывает записанное в файле.
             . ./deploy/prepare-env.sh
 
+            # Порт берётся из docker-compose.yml, а не задаётся здесь
+            # ещё раз: два числа в двух файлах однажды разъедутся.
+            PORT=$(sed -n 's/^ *- *"127\.0\.0\.1:\([0-9]\{1,\}\):[0-9]\{1,\}".*/\1/p' \
+              docker-compose.yml | head -1)
+            [ -n "$PORT" ] || { echo "ОШИБКА: не удалось прочитать порт из docker-compose.yml." >&2; exit 1; }
+
+            # Занят ли порт кем-то, кроме нас. Прошлая выкладка встала
+            # на 3100 с невнятным «port is already allocated» уже
+            # посреди работы — а держал его zapiski-api, живые ЗАПИСКИ.
+            # Освобождать чужой порт нельзя ни при каких условиях:
+            # это и есть тот самый худший исход. Поэтому отказываемся
+            # ДО запуска и называем виновника.
+            if ss -ltnH "sport = :$PORT" 2>/dev/null | grep -q .; then
+              if ! docker ps --filter "name=simpasid-app" --format '{{.Ports}}' \
+                   | grep -q "127.0.0.1:$PORT->"; then
+                echo "ОШИБКА: порт $PORT на петле занят не нами. Выкладка остановлена," >&2
+                echo "чтобы не тронуть чужую службу. Кто держит порт:" >&2
+                ss -ltnpH "sport = :$PORT" >&2 || true
+                exit 1
+              fi
+            fi
+
             # Свой проект Compose: -p simpasid. Стек соседа не затрагивается.
             docker compose --project-name simpasid up -d --build
 
             # Ждём, пока проверка здоровья скажет, что сервис поднялся.
             for i in $(seq 1 60); do
-              if curl -fsS --max-time 5 http://127.0.0.1:3100/healthz >/dev/null 2>&1; then
+              if curl -fsS --max-time 5 "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
                 echo "OK: сервис отвечает на /healthz."
                 break
               fi
