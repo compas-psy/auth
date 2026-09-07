@@ -22,12 +22,17 @@ interface Spec {
   servers: Array<{ url: string }>;
   tags?: Array<{ name: string; description?: string }>;
   paths: Record<string, Record<string, Operation>>;
-  components: { schemas: Record<string, SchemaObject> };
+  security?: Array<Record<string, unknown>>;
+  components: {
+    schemas: Record<string, SchemaObject>;
+    securitySchemes?: Record<string, { type?: string; in?: string; name?: string }>;
+  };
 }
 
 interface Operation {
   operationId?: string;
   summary?: string;
+  security?: Array<Record<string, unknown>>;
   description?: string;
   tags?: string[];
   responses?: Record<string, { description?: string; content?: Record<string, { schema?: SchemaObject }> }>;
@@ -40,6 +45,7 @@ interface SchemaObject {
   properties?: Record<string, SchemaObject>;
   items?: SchemaObject;
   enum?: unknown[];
+  "x-extensible-enum"?: unknown[];
   required?: string[];
   examples?: unknown[];
 }
@@ -244,7 +250,7 @@ function referencePage(
       body += `<h2>Поля ответа</h2>${fieldsTable(spec, schema)}`;
     }
 
-    body += `<h2>Запрос</h2><pre>${esc(curlFor(server, method, path))}</pre>`;
+    body += `<h2>Запрос</h2><pre>${esc(curlFor(spec, server, method, path, op))}</pre>`;
     const example = exampleFor(spec, schema);
     if (example) body += `<h2>Ответ · 200</h2><pre>${esc(example)}</pre>`;
   }
@@ -256,10 +262,31 @@ function referencePage(
     `<div class="wrap">${body}</div>`);
 }
 
-function curlFor(server: string, method: string, path: string): string {
+/**
+ * Заголовки примера берутся из security операции, а не из привычки.
+ *
+ * У ручек аккаунта это ключ доступа; у первичного токен-API — имя
+ * приложения (X-Client-Id), и ключа доступа там нет вовсе: его ещё не
+ * выдали, вход только начинается. Пример, зовущий не тот заголовок,
+ * даёт разработчику 403 на ручке, которую справочник только что
+ * описал как рабочую.
+ */
+function curlFor(
+  spec: Spec, server: string, method: string, path: string, op: Operation,
+): string {
   const url = `${server}${path.replace(/\{([^}]+)\}/g, "<$1>")}`;
   const verb = method === "get" ? "" : ` -X ${method.toUpperCase()}`;
-  return `curl${verb} ${url} \\\n  -H "Authorization: Bearer <ваш ключ>"`;
+  const schemes = spec.components.securitySchemes ?? {};
+  const names = (op.security ?? spec.security ?? []).flatMap((s) => Object.keys(s));
+  const headers = names.map((name) => {
+    const scheme = schemes[name];
+    if (scheme?.type === "apiKey" && scheme.in === "header") {
+      return `  -H "${scheme.name}: <идентификатор приложения>"`;
+    }
+    return `  -H "Authorization: Bearer <ваш ключ>"`;
+  });
+  if (headers.length === 0) return `curl${verb} ${url}`;
+  return `curl${verb} ${url} \\\n${headers.join(" \\\n")}`;
 }
 
 function deref(spec: Spec, schema: SchemaObject | undefined): SchemaObject | undefined {
@@ -284,7 +311,7 @@ function fieldsTable(spec: Spec, schema: SchemaObject): string {
     for (const [name, raw] of Object.entries(resolved.properties)) {
       const prop = deref(spec, raw) ?? raw;
       rows.push(`<tr><td><code>${esc(prefix + name)}</code></td>
-<td>${esc(typeName(prop))}</td><td>${esc(prop.description ?? raw.description ?? "")}</td></tr>`);
+<td>${esc(typeName(spec, prop))}</td><td>${esc(prop.description ?? raw.description ?? "")}</td></tr>`);
       if (prop.type === "array" && prop.items) walk(prop.items, `${prefix}${name}[].`, depth + 1);
       else if (prop.properties) walk(prop, `${prefix}${name}.`, depth + 1);
     }
@@ -295,10 +322,21 @@ function fieldsTable(spec: Spec, schema: SchemaObject): string {
 <tbody>${rows.join("")}</tbody></table>`;
 }
 
-function typeName(s: SchemaObject): string {
+/**
+ * Элемент массива разыменовывается. Без этого `products` печатался как
+ * array<object>: разработчик не видел ни одного продукта, а взять их
+ * больше неоткуда — справочник генерируется из спецификации.
+ */
+function typeName(spec: Spec, raw: SchemaObject): string {
+  const s = deref(spec, raw) ?? raw;
   if (s.enum) return s.enum.join(" | ");
+  // Растущий набор печатается с многоточием: значения назвать надо —
+  // больше их взять неоткуда, — но выдавать открытый набор за полный
+  // значит обещать, что нового продукта не появится.
+  const open = s["x-extensible-enum"];
+  if (open?.length) return `${open.join(" | ")} | …`;
   if (Array.isArray(s.type)) return s.type.join(" | ");
-  if (s.type === "array") return `array<${s.items ? typeName(s.items) : "object"}>`;
+  if (s.type === "array") return `array<${s.items ? typeName(spec, s.items) : "object"}>`;
   return s.type ?? "object";
 }
 
@@ -312,6 +350,7 @@ function sample(spec: Spec, raw: SchemaObject | undefined, depth: number): unkno
   if (!s || depth > 4) return undefined;
   if (s.examples?.length) return s.examples[0];
   if (s.enum?.length) return s.enum[0];
+  if (s["x-extensible-enum"]?.length) return s["x-extensible-enum"][0];
   if (s.type === "array") return [sample(spec, s.items, depth + 1)].filter((v) => v !== undefined);
   if (s.properties) {
     const out: Record<string, unknown> = {};

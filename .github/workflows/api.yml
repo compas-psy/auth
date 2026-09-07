@@ -27,14 +27,36 @@ jobs:
           --ruleset server/openapi/.spectral.yaml
           --fail-severity error
 
+      # oasdiff — программа на Go. В npm под этим именем лежит ЗАГЛУШКА
+      # (версия 0.0.1-security, занятое имя без исполняемого файла),
+      # поэтому npx --yes oasdiff падал с «could not determine
+      # executable to run». Ставим настоящую, закреплённой версией.
+      - uses: actions/setup-go@v5
+        with: { go-version: "stable" }
+
       # Ломающее изменение видно ДО слияния, а не после (артборд R3).
+      #
+      # Шаг выполняется И на push в main. Раньше он стоял под
+      # «if: pull_request», а вся работа шла прямым push — и за 25
+      # зелёных прогонов проверка не отработала НИ РАЗУ. Зелёный статус
+      # без проверки хуже отсутствия проверки: на него полагаются.
       - name: Ломающие изменения контракта
-        if: github.event_name == 'pull_request'
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
-          if ! git show "origin/${{ github.base_ref }}:server/openapi/simpasid.v1.yaml" > /tmp/base.yaml 2>/dev/null; then
-            echo "Спецификации в базовой ветке нет — сравнивать не с чем, это первое появление контракта."
+          go install github.com/oasdiff/oasdiff@v1.31.0
+
+          SPEC=server/openapi/simpasid.v1.yaml
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="HEAD~1"
+          fi
+
+          if ! git show "$BASE:$SPEC" > /tmp/base.yaml 2>/dev/null; then
+            echo "Спецификации в $BASE нет — сравнивать не с чем, это первое появление контракта."
             exit 0
           fi
-          npx --yes oasdiff breaking /tmp/base.yaml server/openapi/simpasid.v1.yaml --fail-on ERR
+
+          echo "Сравниваем $BASE и рабочее дерево."
+          "$(go env GOPATH)/bin/oasdiff" breaking /tmp/base.yaml "$SPEC" --fail-on ERR

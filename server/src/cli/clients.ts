@@ -32,7 +32,7 @@ const USAGE = `Реестр клиентов SimpasID.
 
   list
   add --id <идентификатор> --name <название> [--redirect <адрес>]…
-      [--product practice|zapiski|moments] [--public] [--first-party]
+      [--product practice|zapiski|moments|steps] [--public] [--first-party]
 
 --public       клиент без ключа (мобильный): безопасность на PKCE
 --first-party  доступ к первичному токен-API. По умолчанию НЕТ.

@@ -1,7 +1,7 @@
 import { getPool, withTransaction } from "../db/pool.js";
 
-export type Product = "practice" | "zapiski" | "moments";
-export const PRODUCTS: readonly Product[] = ["practice", "zapiski", "moments"];
+export type Product = "practice" | "zapiski" | "moments" | "steps";
+export const PRODUCTS: readonly Product[] = ["practice", "zapiski", "moments", "steps"];
 
 export type Provider = "yandex" | "tid" | "sberid" | "vkid";
 export const PROVIDERS: readonly Provider[] = ["yandex", "tid", "sberid", "vkid"];
