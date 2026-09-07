@@ -177,15 +177,22 @@ jobs:
             [ "$got" = "$want" ] || fail=1
           done
 
-          # 5) Какие способы входа подключены на живом сервисе.
-          # Отдаются КОДЫ способов, а не ключи. Пустой список — не
-          # ошибка: провайдер без ключей на экране не показывается,
-          # и это следствие требования, а не поломка. Но увидеть,
-          # дошли ли ключи, можно только здесь.
-          methods=$(curl -s --max-time 20 https://auth.cmpas.ru/v1/auth/methods || echo '{}')
-          note "способы входа: $(echo "$methods" | jq -c . 2>/dev/null || echo "$methods")"
-          echo "$methods" | jq -e '.email == true' >/dev/null \
-            || { echo "::error::вход по почте недоступен — он обязателен (И-5)"; fail=1; }
+          # 5) Первичный токен-API закрыт для чужих.
+          # /v1/auth/* доступен ТОЛЬКО клиентам с first_party = true
+          # (12_NATIVE_AUTH.md §3.1): вход, спроектированный в расчёте
+          # на доверенное приложение, не должен быть открыт всем.
+          # Анонимный запрос обязан получить 403 forbidden_client —
+          # это и проверяется. Состав способов входа отсюда не виден,
+          # и это не пробел проверки, а работающая защита.
+          gate=$(curl -s -o gate.json -w '%{http_code}' --max-time 20 \
+            https://auth.cmpas.ru/v1/auth/methods || echo 000)
+          note "/v1/auth/methods без клиента -> $gate $(cat gate.json 2>/dev/null)"
+          if [ "$gate" = "403" ] && grep -q forbidden_client gate.json; then
+            note "первичный токен-API закрыт, как и требуется"
+          else
+            echo "::error::первичный токен-API отвечает чужому клиенту ($gate)"
+            fail=1
+          fi
 
           exit $fail
 
