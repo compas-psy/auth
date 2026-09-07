@@ -253,6 +253,25 @@ describe("осмотр сервера", () => {
     }
   });
 
+  it("показывает применённые миграции и запрет на смену sub", () => {
+    // Раньше применённость миграции на боевом сервере ВЫВОДИЛАСЬ из
+    // устройства запуска, а не наблюдалась. Вывод был верным, но
+    // обязательство перед продуктом лучше видеть.
+    expect(script).toContain("dist/cli/schema.js");
+    expect(script).toContain("состояние схемы");
+  });
+
+  it("осмотр схемы остаётся чтением", () => {
+    // Оболочка вызывает отдельную команду; она обязана быть той,
+    // которая только спрашивает.
+    const cli = readFileSync(
+      new URL("../src/cli/schema.ts", import.meta.url), "utf8");
+    for (const forbidden of ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE"]) {
+      expect({ forbidden, found: cli.includes(forbidden) })
+        .toEqual({ forbidden, found: false });
+    }
+  });
+
   it("из .env печатает только имена, но никогда значения", () => {
     // Значение YANDEX_CLIENT_SECRET в журнале прогона — это выданный
     // секрет. Имя ключа секретом не является и отвечает на нужный
