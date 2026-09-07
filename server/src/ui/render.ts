@@ -49,6 +49,12 @@ const TITLES: Record<string, string> = {
   EmailRequired: "Нужна электронная почта",
   LinkExpired: "Ссылка больше не действует",
   Unavailable: "Вход временно недоступен",
+  IdentityTaken: "Этот аккаунт уже привязан",
+  ProviderFailed: "Войти не получилось",
+};
+
+const PROVIDER_TITLES: Record<string, string> = {
+  yandex: "Яндекс ID", tid: "T-ID", sberid: "Сбер ID", vkid: "VK ID",
 };
 
 function noScriptBody(screen: string, state: ScreenState): string {
@@ -70,6 +76,27 @@ ${legalLine(version)}
     return `<div class="screen"><main class="card" role="alert">
 <h1>${escapeHtml(errors.unavailableTitle)}</h1>
 <p class="subtitle">${escapeHtml(errors.unavailable)}</p>
+</main></div>`;
+  }
+  if (screen === "IdentityTaken") {
+    return `<div class="screen"><main class="card" role="alert">
+<h1>${escapeHtml(errors.identityTakenTitle)}</h1>
+<p class="subtitle">${escapeHtml(errors.identityTaken)}</p>
+</main></div>`;
+  }
+  if (screen === "ProviderFailed") {
+    return `<div class="screen"><main class="card" role="alert">
+<h1>Войти этим способом не получилось</h1>
+<p class="subtitle">Попробуйте ещё раз или войдите по почте.</p>
+</main></div>`;
+  }
+  if (screen === "EmailRequired") {
+    const provider = String(state.provider ?? "yandex");
+    const name = PROVIDER_TITLES[provider] ?? "Внешний сервис";
+    return `<div class="screen"><main class="card">
+<h1>${escapeHtml(emailRequired.title)}</h1>
+<p class="subtitle">${escapeHtml(name)} не передал подтверждённый адрес почты.
+Почта нужна, чтобы вы могли войти, даже если доступ к ${escapeHtml(name)} пропадёт.</p>
 </main></div>`;
   }
   if (screen === "LinkExpired") {

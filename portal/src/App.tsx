@@ -82,6 +82,12 @@ export function App({ state }: { state: State }) {
           termsVersion={state.termsVersion ?? "0.9"}
           platform={state.platform ?? "web"}
           onSubmitEmail={submitEmail}
+          onProvider={(provider) => {
+            // Уходим к провайдеру через свой маршрут: он выпускает
+            // одноразовый state и знает, к какой попытке входа
+            // возвращать. Прямая ссылка на провайдера этого не умеет.
+            window.location.assign(`/interaction/${state.uid}/provider/${provider}`);
+          }}
         />
       );
   }

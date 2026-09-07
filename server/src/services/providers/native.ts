@@ -58,22 +58,26 @@ export function hasNativeSdk(provider: string): boolean {
   return adapters.has(provider as Provider);
 }
 
-/**
- * Провайдеры, подключённые для веба (OIDC с редиректом).
- *
- * Тоже пусто на Э2: договоры и регистрация приложений — действие
- * человека, а подключение внешних провайдеров вынесено в Э5
- * (docs/plan/E2.md, «Границы этого плана»). Экран входа обязан не
- * разваливаться при любом их числе, включая ноль, и это закрыто тестом.
- */
-const WEB_PROVIDERS_READY: ReadonlySet<Provider> = new Set<Provider>();
-
 export function isMobilePlatform(platform: string): boolean {
   return platform === "android" || platform === "ios";
 }
 
+/**
+ * Состав способов входа для платформы.
+ *
+ * Веб и мобильный контур подключаются РАЗНЫМИ вещами и потому считаются
+ * раздельно: в вебе провайдер работает редиректом и ему нужны ключи
+ * приложения, на мобильном — нативным SDK, которого может не быть даже
+ * там, где ключи есть. Провайдер с ключами, но без SDK, на мобильном
+ * экране не показывается — так требует 12_NATIVE_AUTH.md §2.2.
+ */
 export async function availableProviders(platform: string): Promise<Provider[]> {
-  return isMobilePlatform(platform)
-    ? PROVIDERS.filter((p) => adapters.has(p))
-    : PROVIDERS.filter((p) => WEB_PROVIDERS_READY.has(p));
+  if (isMobilePlatform(platform)) {
+    return PROVIDERS.filter((p) => adapters.has(p));
+  }
+  const { connectedWebProviders } = await import("./registry.js");
+  const connected = new Set(connectedWebProviders());
+  // Порядок задаётся перечнем PROVIDERS, а не порядком подключения:
+  // кнопки не должны переставляться сами по себе.
+  return PROVIDERS.filter((p) => connected.has(p));
 }

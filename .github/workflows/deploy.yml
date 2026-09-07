@@ -45,6 +45,8 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           SIMPASID_DB_PASSWORD: ${{ secrets.SIMPASID_DB_PASSWORD }}
+          YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
+          YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
           # Выкладывается ровно тот коммит, который проверила сборка.
           DEPLOY_SHA: ${{ github.sha }}
         with:
@@ -58,7 +60,7 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           command_timeout: 30m
-          envs: SIMPASID_DB_PASSWORD,DEPLOY_SHA
+          envs: SIMPASID_DB_PASSWORD,DEPLOY_SHA,YANDEX_CLIENT_ID,YANDEX_CLIENT_SECRET
           script: |
             set -euo pipefail
 
@@ -90,6 +92,17 @@ jobs:
               # Ни от человека, ни из файла — заводим сами и запоминаем.
               printf 'SIMPASID_DB_PASSWORD=%s\n' "$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)" >> .env
             fi
+            # Ключи провайдеров: записываем только то, что пришло, и
+            # не затираем уже лежащее пустым значением.
+            for key in YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET; do
+              eval "value=\${$key:-}"
+              [ -n "$value" ] || continue
+              if grep -q "^${key}=" .env; then
+                sed -i "s|^${key}=.*|${key}=${value}|" .env
+              else
+                printf '%s=%s\n' "$key" "$value" >> .env
+              fi
+            done
             chmod 600 .env
 
             # Свой проект Compose: -p simpasid. Стек соседа не затрагивается.

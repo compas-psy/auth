@@ -13,6 +13,8 @@ import { registerConsentRoutes } from "./api/v1/consents.js";
 import { registerAuditRoutes } from "./api/v1/audit.js";
 import { registerInteractionRoutes } from "./oidc/interactions.js";
 import { registerPortal } from "./ui/static.js";
+import { registerLegalRoutes } from "./api/legal.js";
+import { connectConfiguredProviders } from "./services/providers/registry.js";
 import { renderScreen } from "./ui/render.js";
 
 export interface BuildOptions {
@@ -78,6 +80,10 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   // Провайдер сам выводит префикс из req.originalUrl
   // (lib/helpers/oidc_context.js:88), поэтому объявленные в discovery
   // адреса ручек получаются с /oidc.
+  // Подключаем то, для чего переданы ключи. Провайдер без ключей не
+  // появляется ни на экране, ни на маршруте возврата.
+  await connectConfiguredProviders(config.issuer);
+
   const provider = await buildProvider();
   await app.register(middie);
   app.use(OIDC_MOUNT, provider.callback());
@@ -106,6 +112,7 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   await registerAuditRoutes(app);
   await registerInteractionRoutes(app, provider);
   await registerPortal(app);
+  await registerLegalRoutes(app);
   return app;
 }
 

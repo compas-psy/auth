@@ -25,6 +25,10 @@ services:
       KEYS_DIR: /var/lib/simpasid/keys
       MAIL_ENDPOINT: ${MAIL_ENDPOINT:-}
       MAIL_TOKEN: ${MAIL_TOKEN:-}
+      # Пусто — провайдера на экране нет. Ключи приходят из секретов
+      # репозитория через .env на сервере, в образ не попадают.
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
     ports:
       # ТОЛЬКО на петлю: наружу сервис выходит через nginx на хосте,
       # тем же способом, каким уже опубликованы cmpas.ru и moments.

@@ -10,6 +10,10 @@ import { getPool } from "../db/pool.js";
 import { loadConfig } from "../config.js";
 import { renderScreen } from "../ui/render.js";
 import type { Product } from "../services/accounts.js";
+import {
+  webProvider, issueLoginState, consumeLoginState,
+} from "../services/providers/registry.js";
+import { linkOrCreateByProvider } from "../services/identityLink.js";
 
 /**
  * Экраны взаимодействия. Живут вне контура библиотеки: это наши экраны,
@@ -72,6 +76,116 @@ export async function registerInteractionRoutes(
     // и когда сработала пауза: иначе ручка становится способом узнать,
     // зарегистрирован ли человек.
     return reply.header("cache-control", "no-store").send({ status: "sent" });
+  });
+
+  /**
+   * Кнопка «Войти через …»: уводим к провайдеру с одноразовым state.
+   *
+   * Формы логина провайдера у нас нет и быть не может — человек уходит
+   * к нему самому и возвращается уже опознанным.
+   */
+  app.get<{ Params: { uid: string; provider: string } }>(
+    "/interaction/:uid/provider/:provider",
+    async (req, reply) => {
+      const details = await detailsFor(provider, req, reply);
+      if (!details) return;
+
+      const adapter = webProvider(req.params.provider);
+      // Провайдера без ключей на экране нет, и маршрут его не знает.
+      if (!adapter) return reply.code(404).send({ error: "provider_unavailable" });
+
+      const state = await issueLoginState(adapter.provider, req.params.uid);
+      await writeAudit({
+        event: "provider_start", provider: adapter.provider, outcome: "ok", ip: req.ip,
+      });
+      return reply
+        .code(303)
+        .header("cache-control", "no-store")
+        .header("location", adapter.authorizationUrl(state))
+        .send();
+    },
+  );
+
+  /**
+   * Возврат от провайдера. Это тот самый адрес, который зарегистрирован
+   * у провайдера как Redirect URI: https://auth.cmpas.ru/callback/<провайдер>.
+   */
+  app.get<{
+    Params: { provider: string };
+    Querystring: { code?: string; state?: string; error?: string };
+  }>("/callback/:provider", async (req, reply) => {
+    const html = (code: number, screen: string, state: Record<string, unknown> = {}) =>
+      reply.code(code).type("text/html; charset=utf-8")
+        .header("cache-control", "no-store").send(renderScreen(screen, state));
+
+    // Отказ провайдера — это не наша ошибка и не повод показывать его
+    // машинный код человеку.
+    if (req.query.error || !req.query.code || !req.query.state) {
+      await writeAudit({
+        event: "provider_callback", provider: req.params.provider,
+        outcome: "fail", ip: req.ip,
+      });
+      return html(400, "ProviderFailed");
+    }
+
+    const adapter = webProvider(req.params.provider);
+    if (!adapter) return html(400, "ProviderFailed");
+
+    const consumed = await consumeLoginState(req.params.provider, req.query.state);
+    if (!consumed) {
+      // Подделанный, просроченный или уже использованный возврат.
+      await writeAudit({
+        event: "provider_state", provider: req.params.provider,
+        outcome: "fail", ip: req.ip,
+      });
+      return html(400, "ProviderFailed");
+    }
+
+    let identity;
+    try {
+      identity = await adapter.exchange(req.query.code);
+    } catch {
+      await writeAudit({
+        event: "provider_exchange", provider: adapter.provider,
+        outcome: "fail", ip: req.ip,
+      });
+      return html(400, "ProviderFailed");
+    }
+
+    // И-5: у каждой учётной записи всегда есть подтверждённая почта.
+    // Нет её — ведём на экран C2, а запись НЕ заводим.
+    if (!identity.email || !identity.emailVerified) {
+      return html(200, "EmailRequired", { provider: adapter.provider });
+    }
+
+    const linked = await linkOrCreateByProvider({
+      provider: adapter.provider, subject: identity.subject, email: identity.email,
+    });
+    if (linked === "identity_taken") {
+      await writeAudit({
+        event: "provider_login", provider: adapter.provider, outcome: "fail", ip: req.ip,
+      });
+      // Артборд C3.
+      return html(409, "IdentityTaken");
+    }
+
+    const device = coarsen(req.headers["user-agent"]);
+    await getPool().query(
+      `INSERT INTO sessions (account_id, platform, client, device_key, kind)
+       VALUES ($1,$2,$3,$4,'sso')`,
+      [linked.accountId, device.platform, device.client, consumed.interactionUid],
+    );
+    await writeAudit({
+      accountId: linked.accountId, event: "login_provider",
+      provider: adapter.provider, outcome: "ok", ip: req.ip,
+    });
+
+    const location = await provider.interactionResult(
+      req.raw, reply.raw,
+      { login: { accountId: linked.accountId, remember: true } },
+      { mergeWithLastSubmission: false },
+    );
+    return reply.code(303).header("location", location).send();
   });
 
   /** Переход по ссылке из письма — конец входа. */
