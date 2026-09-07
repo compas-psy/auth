@@ -98,7 +98,7 @@ describe("экран входа: юридическая конструкция",
   it("человек видит, куда он входит", () => {
     render(<SignIn {...base} service="practice" providers={[]} />);
     expect(screen.getByRole("heading", { name: "Вход в ПРАКТИКУ" })).toBeVisible();
-    expect(screen.getByText("Один аккаунт СИМПАС — ПРАКТИКА, ЗАПИСКИ, МОМЕНТЫ.")).toBeVisible();
+    expect(screen.getByText("Один аккаунт СИМПАС — ПРАКТИКА, ЗАПИСКИ, МОМЕНТЫ, ШАГИ.")).toBeVisible();
   });
 
   it("ни одна кнопка провайдера не выделена среди других", () => {
