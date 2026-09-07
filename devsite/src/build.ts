@@ -45,6 +45,7 @@ interface SchemaObject {
   properties?: Record<string, SchemaObject>;
   items?: SchemaObject;
   enum?: unknown[];
+  "x-extensible-enum"?: unknown[];
   required?: string[];
   examples?: unknown[];
 }
@@ -310,7 +311,7 @@ function fieldsTable(spec: Spec, schema: SchemaObject): string {
     for (const [name, raw] of Object.entries(resolved.properties)) {
       const prop = deref(spec, raw) ?? raw;
       rows.push(`<tr><td><code>${esc(prefix + name)}</code></td>
-<td>${esc(typeName(prop))}</td><td>${esc(prop.description ?? raw.description ?? "")}</td></tr>`);
+<td>${esc(typeName(spec, prop))}</td><td>${esc(prop.description ?? raw.description ?? "")}</td></tr>`);
       if (prop.type === "array" && prop.items) walk(prop.items, `${prefix}${name}[].`, depth + 1);
       else if (prop.properties) walk(prop, `${prefix}${name}.`, depth + 1);
     }
@@ -321,10 +322,21 @@ function fieldsTable(spec: Spec, schema: SchemaObject): string {
 <tbody>${rows.join("")}</tbody></table>`;
 }
 
-function typeName(s: SchemaObject): string {
+/**
+ * Элемент массива разыменовывается. Без этого `products` печатался как
+ * array<object>: разработчик не видел ни одного продукта, а взять их
+ * больше неоткуда — справочник генерируется из спецификации.
+ */
+function typeName(spec: Spec, raw: SchemaObject): string {
+  const s = deref(spec, raw) ?? raw;
   if (s.enum) return s.enum.join(" | ");
+  // Растущий набор печатается с многоточием: значения назвать надо —
+  // больше их взять неоткуда, — но выдавать открытый набор за полный
+  // значит обещать, что нового продукта не появится.
+  const open = s["x-extensible-enum"];
+  if (open?.length) return `${open.join(" | ")} | …`;
   if (Array.isArray(s.type)) return s.type.join(" | ");
-  if (s.type === "array") return `array<${s.items ? typeName(s.items) : "object"}>`;
+  if (s.type === "array") return `array<${s.items ? typeName(spec, s.items) : "object"}>`;
   return s.type ?? "object";
 }
 
@@ -338,6 +350,7 @@ function sample(spec: Spec, raw: SchemaObject | undefined, depth: number): unkno
   if (!s || depth > 4) return undefined;
   if (s.examples?.length) return s.examples[0];
   if (s.enum?.length) return s.enum[0];
+  if (s["x-extensible-enum"]?.length) return s["x-extensible-enum"][0];
   if (s.type === "array") return [sample(spec, s.items, depth + 1)].filter((v) => v !== undefined);
   if (s.properties) {
     const out: Record<string, unknown> = {};

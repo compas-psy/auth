@@ -9,7 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { buildServer } from "../src/index.js";
 import { closePool } from "../src/db/pool.js";
 import { resetData, ensureTestClient, issueTestToken, authHeaders } from "./helpers.js";
-import { createAccountWithEmail } from "../src/services/accounts.js";
+import { createAccountWithEmail, PRODUCTS } from "../src/services/accounts.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SPEC_PATH = join(HERE, "../openapi/simpasid.v1.yaml");
@@ -178,6 +178,24 @@ describe("реализация соответствует спецификаци
       expect({ url, code: r.statusCode }).toEqual({ url, code: 403 });
       expect(r.json()).toEqual({ error: "forbidden_client" });
     }
+  });
+
+  /**
+   * Перечень продуктов растёт: сегодня добавились ШАГИ, и они вряд ли
+   * последние. Значение, дописанное в закрытый enum ОТВЕТА, — ломающее
+   * изменение контракта: клиент, написанный по прежней спецификации,
+   * такого продукта не ждёт. x-extensible-enum говорит честно: набор
+   * будет расти, неизвестное значение обязано быть обработано.
+   *
+   * В запросах ProductCode не используется ни разу, так что строгость
+   * приёма от этого не теряется — её держат перечень в коде и
+   * ограничение схемы в базе.
+   */
+  it("перечень продуктов объявлен растущим и совпадает с кодом", () => {
+    const schema = spec.components.schemas.ProductCode;
+    expect(schema.enum, "закрытый enum ломает клиентов при добавлении продукта")
+      .toBeUndefined();
+    expect([...schema["x-extensible-enum"]].sort()).toEqual([...PRODUCTS].sort());
   });
 
   it("адрес сервера — auth.cmpas.ru, а не устаревший api.simpas.ru", () => {

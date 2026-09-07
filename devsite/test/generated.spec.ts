@@ -53,6 +53,22 @@ describe("ресурс разработчика", () => {
     expect(html).toContain("Authorization: Bearer");
   });
 
+  /**
+   * ProductCode объявлен растущим набором (x-extensible-enum), а не
+   * закрытым enum. Справочник обязан всё равно называть значения:
+   * иначе разработчик видит «string» и не знает ни одного продукта —
+   * а узнать их больше неоткуда, справочник генерируется из спеки.
+   * И обязан показать, что набор открыт, а не выдать его за полный.
+   */
+  it("растущий перечень значений напечатан и помечен как открытый", () => {
+    const html = readFileSync(
+      join(OUT, "reference", `${slug("/account")}.html`), "utf8");
+    for (const product of spec.components.schemas.ProductCode["x-extensible-enum"]) {
+      expect(html).toContain(product);
+    }
+    expect(html).toContain("…");
+  });
+
   it("адрес в примерах — auth.cmpas.ru, а не устаревший api.simpas.ru", () => {
     for (const file of [join(OUT, "index.html"), ...readdirSync(join(OUT, "reference"))
       .map((f) => join(OUT, "reference", f))]) {
