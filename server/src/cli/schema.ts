@@ -9,6 +9,7 @@
  *   docker exec simpasid-app node dist/cli/schema.js
  */
 import { schemaReport } from "../services/schemaReport.js";
+import { recentEvents } from "../services/incidents.js";
 import { closePool } from "../db/pool.js";
 
 async function main(): Promise<number> {
@@ -28,6 +29,20 @@ async function main(): Promise<number> {
     // Обязательство перед ПРАКТИКОЙ: их связь с человеком держится на
     // нашем sub. Молчание здесь было бы хуже отсутствия проверки.
     : "запрет на смену sub: НЕ СТОИТ — обязательство перед ПРАКТИКОЙ не обеспечено");
+
+  // Свод событий: по нему видно, ДОКУДА доходит вход, когда он не
+  // работает. У каждой ветки отказа своё событие.
+  console.log("");
+  console.log("события за 6 часов:");
+  const events = await recentEvents(6);
+  if (events.length === 0) {
+    console.log("  СОБЫТИЙ НЕ БЫЛО — ни одного входа не начиналось");
+  } else {
+    for (const e of events) {
+      const who = e.provider ? ` (${e.provider})` : "";
+      console.log(`  ${e.count}\t${e.event}${who} — ${e.outcome}`);
+    }
+  }
 
   return 0;
 }

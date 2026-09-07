@@ -227,6 +227,50 @@ describe("рабочий процесс выкладки", () => {
   });
 });
 
+describe("проба входа", () => {
+  const raw = readFileSync(
+    new URL("../../.github/workflows/probe.yml", import.meta.url), "utf8");
+  const wf = parse(raw) as {
+    on: Record<string, unknown>;
+    jobs: Record<string, { steps: { run?: string; with?: { script?: string } }[] }>;
+  };
+  const run = wf.jobs.probe!.steps[0]!.run!;
+
+  it("ходит сама, а не только руками", () => {
+    // Смысл пробы в том, чтобы узнать о падении раньше человека.
+    expect(Object.keys(wf.on)).toContain("schedule");
+  });
+
+  it("проверяет дверь, а не признаки жизни", () => {
+    // /healthz отвечает и тогда, когда войти нельзя: ровно так и было,
+    // пока не обрабатывался шаг разрешения.
+    expect(run).toContain("/oidc/auth?");
+    expect(run).toContain("Вход в");
+  });
+
+  it("замечает экран «временно недоступен»", () => {
+    // Он отдаётся с кодом 200 при Accept: text/html, поэтому проверка
+    // «страница вернулась» его бы не поймала. Учредитель поймал руками.
+    expect(run).toContain("временно недоступен");
+  });
+
+  it("ходит снаружи и без доступа к серверу", () => {
+    // Проба повторяет путь браузера. Ключей у неё нет: проба, которой
+    // дали доступ к серверу, — ещё одна дверь в бой.
+    expect(raw).not.toContain("ssh-action");
+    expect(raw).not.toContain("SSH_PRIVATE_KEY");
+    expect(raw).not.toContain("docker");
+  });
+
+  it("не заводит по задаче на каждую неудачу", () => {
+    // Сорок задач за десять часов — это не оповещение, а шум, в
+    // котором тонет и настоящее.
+    const notify = wf.jobs.probe!.steps[1]!.with!.script!;
+    expect(notify).toContain("listForRepo");
+    expect(notify).toContain("createComment");
+  });
+});
+
 describe("осмотр сервера", () => {
   const raw = readFileSync(
     new URL("../../.github/workflows/diagnose.yml", import.meta.url), "utf8");
