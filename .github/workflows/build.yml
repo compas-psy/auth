@@ -65,15 +65,100 @@ jobs:
         run: npm test --prefix packages/id-client
 
   image:
-    name: Образ собирается
+    name: Образ собирается и поднимается
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Тот же Postgres, что и в тестах: образ обязан подняться на пустой
+    # базе, сам применив миграции.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: simpasid
+          POSTGRES_PASSWORD: simpasid
+          POSTGRES_DB: simpasid_smoke
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U simpasid -d simpasid_smoke"
+          --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
+
       - name: Сборка образа
         run: docker build -t simpasid:ci --target runner .
-      # Сборка образа — тоже проверка: она ловит расхождение между тем,
-      # что собирается локально, и тем, что уедет на сервер.
+
+      # Сборки МАЛО. Она не запускает приложение, и два дефекта уехали
+      # на боевой сервер именно так: @fastify/middie лежал в
+      # devDependencies, которых нет в образе (ERR_MODULE_NOT_FOUND), а
+      # tsc не копировал .sql, и миграции в dist не доезжали (ENOENT
+      # scandir /app/dist/db/migrations). Тесты этого не видели: они
+      # идут от исходников, где установлено и лежит всё.
+      - name: Контейнер поднимается на пустой базе
+        run: |
+          docker run -d --name simpasid-smoke --network host \
+            -e NODE_ENV=production \
+            -e DATABASE_URL=postgres://simpasid:simpasid@127.0.0.1:5433/simpasid_smoke \
+            -e ISSUER=https://auth.cmpas.ru \
+            -e PORT=3000 -e HOST=0.0.0.0 \
+            simpasid:ci
+          for i in $(seq 1 60); do
+            if curl -fsS --max-time 3 http://127.0.0.1:3000/healthz >/dev/null 2>&1; then
+              echo "OK: контейнер отвечает на /healthz."; break
+            fi
+            if [ "$i" = "60" ]; then
+              echo "::error::Контейнер не поднялся за две минуты."
+              docker logs simpasid-smoke; exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Поверхность сервиса на месте
+        run: |
+          # Проверяется то, что человек и продукт открывают на самом
+          # деле. …/dev собирался, ехал в образ — и не отдавался никем:
+          # 404 на боевом адресе увидел бы разработчик продукта.
+          fail=0
+          check() {
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \
+              -H "Host: auth.cmpas.ru" -H "X-Forwarded-Proto: https" \
+              "http://127.0.0.1:3000$1")
+            echo "$1 -> $code (ожидалось $2)"
+            [ "$code" = "$2" ] || fail=1
+          }
+          check /healthz 200
+          check /.well-known/openid-configuration 200
+          check /oidc/jwks 200
+          check /account 200
+          check /dev 302
+          check /dev/ 200
+          exit $fail
+
+      - name: Адреса в метаданных абсолютны и на нашем домене
+        run: |
+          # Доверяющая сторона берёт jwks_uri ИЗ метаданных. Пока мост
+          # на /.well-known переспрашивал провайдера без заголовков,
+          # там стояло http://localhost при верном issuer.
+          curl -s --max-time 5 -H "Host: auth.cmpas.ru" -H "X-Forwarded-Proto: https" \
+            http://127.0.0.1:3000/.well-known/openid-configuration > meta.json
+          issuer=$(jq -r .issuer meta.json)
+          echo "issuer = $issuer"
+          [ "$issuer" = "https://auth.cmpas.ru" ] || { echo "::error::issuer не тот"; exit 1; }
+          bad=$(jq -r '
+            to_entries[]
+            | select((.key | test("_(endpoint|uri)$"))
+                     and (.value | type == "string")
+                     and ((.value | startswith("https://auth.cmpas.ru/")) | not))
+            | "\(.key) = \(.value)"' meta.json)
+          if [ -n "$bad" ]; then
+            echo "::error::объявленные адреса не на нашем домене:"
+            echo "$bad"
+            exit 1
+          fi
+          echo "все объявленные адреса на https://auth.cmpas.ru"
+
+      - name: Журнал контейнера
+        if: always()
+        run: docker logs simpasid-smoke || true
 
   deploy:
     name: Выкладка

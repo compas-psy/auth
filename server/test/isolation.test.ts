@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { parse } from "yaml";
 
 const compose = parse(
@@ -185,5 +187,47 @@ describe("порт на петле", () => {
   it("проверка здоровья при выкладке не содержит порта отдельным числом", () => {
     // Иначе появляется четвёртое место, где порт можно забыть.
     expect(deployWf).not.toMatch(/127\.0\.0\.1:\d+\/healthz/);
+  });
+});
+
+describe("зависимости боевого кода", () => {
+  const pkg = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  ) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+
+  /** Все внешние пакеты, которые импортирует src. */
+  const imported = (() => {
+    const root = fileURLToPath(new URL("../src", import.meta.url));
+    const names = new Set<string>();
+    const walk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!entry.name.endsWith(".ts")) continue;
+        const src = readFileSync(full, "utf8");
+        for (const m of src.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)) {
+          const spec = m[1]!;
+          if (spec.startsWith(".") || spec.startsWith("node:")) continue;
+          names.add(spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0]!);
+        }
+      }
+    };
+    walk(root);
+    return [...names].sort();
+  })();
+
+  it("каждый импортируемый пакет объявлен в dependencies, а не в devDependencies", () => {
+    // В образе стоит npm ci --omit=dev: пакет из devDependencies туда
+    // не доедет, и приложение упадёт при СТАРТЕ, а не при сборке.
+    // Ровно так вышло с @fastify/middie: тесты идут от исходников, где
+    // установлено всё, образ собирался успешно, а контейнер падал
+    // с ERR_MODULE_NOT_FOUND уже на боевом сервере.
+    const deps = Object.keys(pkg.dependencies ?? {});
+    const missing = imported.filter((name) => !deps.includes(name));
+    expect(missing).toEqual([]);
+  });
+
+  it("список импортов не пуст: проверка выше действительно что-то смотрит", () => {
+    expect(imported.length).toBeGreaterThan(3);
   });
 });

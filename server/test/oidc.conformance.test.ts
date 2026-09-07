@@ -75,6 +75,22 @@ describe("Т7: конформность протокола", () => {
     expect(r.json().issuer).toBe("https://auth.cmpas.ru");
   });
 
+  it("по адресу из issuer объявлены те же абсолютные адреса, а не localhost", async () => {
+    // Клиент читает МЕТАДАННЫЕ по адресу, выведенному из issuer, и
+    // ходит за ключами по jwks_uri ОТТУДА. Мост на /.well-known
+    // переспрашивал провайдера через inject без заголовков — и все
+    // адреса выходили http://localhost/oidc/..., при верном issuer.
+    // Доверяющая сторона пошла бы за ключами по http на localhost.
+    const d = (await app.inject({
+      url: "/.well-known/openid-configuration", headers: HOST,
+    })).json();
+    expect(d.issuer).toBe("https://auth.cmpas.ru");
+    for (const key of ["authorization_endpoint", "token_endpoint", "jwks_uri", "userinfo_endpoint"]) {
+      expect({ key, value: d[key] as string })
+        .toEqual({ key, value: expect.stringMatching(/^https:\/\/auth\.cmpas\.ru\//) as unknown as string });
+    }
+  });
+
   it("объявленные адреса ручек ведут на смонтированный префикс", async () => {
     const d = (await app.inject({
       url: "/oidc/.well-known/openid-configuration", headers: HOST,

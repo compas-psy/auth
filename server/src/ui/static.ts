@@ -21,6 +21,53 @@ function portalDist(): string | null {
 }
 
 /**
+ * Ресурс разработчика собирается в devsite/dist из спецификации.
+ * Пути перечислены теми же кандидатами, что и у портала: в образе
+ * это /app/devsite, в разработке — каталог сборки рядом.
+ */
+function devsiteDist(): string | null {
+  const candidates = [
+    process.env.DEVSITE_DIST,
+    resolve(HERE, "../../../devsite/dist"),
+    resolve(HERE, "../../devsite/dist"),
+    "/app/devsite",
+  ].filter((p): p is string => Boolean(p));
+  return candidates.find((p) => existsSync(join(p, "index.html"))) ?? null;
+}
+
+/**
+ * Справочник разработчика на …/dev. CLAUDE.md называет его частью
+ * поверхности сервиса наравне с порталом аккаунта, а Dockerfile
+ * кладёт собранное в образ и задаёт DEVSITE_DIST — но отдавать его
+ * было некому, и адрес отвечал 404.
+ */
+export async function registerDevsite(app: FastifyInstance): Promise<void> {
+  const dist = devsiteDist();
+  if (!dist) return;
+
+  await app.register(fastifyStatic, {
+    root: dist,
+    prefix: "/dev/",
+    // reply.sendFile уже добавлен регистрацией портала: второй раз
+    // fastify-static декорировать ответ не даст.
+    decorateReply: false,
+    index: ["index.html"],
+    // /dev без косой черты — на /dev/, иначе относительные ссылки
+    // внутри страницы разъезжаются.
+    redirect: true,
+    // Справочник ГЕНЕРИРУЕТСЯ из спецификации и меняется вместе с
+    // ней: immutable здесь означал бы устаревший справочник у того,
+    // кто по нему пишет клиента.
+    cacheControl: true,
+    maxAge: 0,
+  });
+
+  // Сам /dev в префикс /dev/ не попадает: fastify-static заводит
+  // маршруты под ним, но не на нём.
+  app.get("/dev", async (_req, reply) => reply.redirect("/dev/", 302));
+}
+
+/**
  * Портал аккаунта: тот же собранный портал, другой начальный экран.
  * Экраны J1, K1, L1-L3, M1-M3, N1 — маршруты одного приложения.
  */

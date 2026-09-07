@@ -12,7 +12,7 @@ import { registerSessionRoutes } from "./api/v1/sessions.js";
 import { registerConsentRoutes } from "./api/v1/consents.js";
 import { registerAuditRoutes } from "./api/v1/audit.js";
 import { registerInteractionRoutes } from "./oidc/interactions.js";
-import { registerPortal } from "./ui/static.js";
+import { registerPortal, registerDevsite } from "./ui/static.js";
 import { registerLegalRoutes } from "./api/legal.js";
 import { connectConfiguredProviders } from "./services/providers/registry.js";
 import { renderScreen } from "./ui/render.js";
@@ -97,8 +97,28 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
     "/.well-known/openid-configuration",
     "/.well-known/oauth-authorization-server",
   ]) {
-    app.get(wellKnown, async (_req, reply) => {
-      const inner = await app.inject({ url: `${OIDC_MOUNT}/.well-known/openid-configuration` });
+    app.get(wellKnown, async (req, reply) => {
+      // Заголовки, определяющие происхождение, переносятся в
+      // переспрос. Провайдер строит АБСОЛЮТНЫЕ адреса ручек из
+      // запроса, а не из настроенного issuer (документация
+      // oidc-provider, FAQ «Why does my .well-known/openid-configuration
+      // link to http endpoints»). Синтетический запрос inject идёт без
+      // Host, и без переноса все адреса выходили
+      // http://localhost/oidc/... при верном issuer — доверяющая
+      // сторона пошла бы за ключами по http на localhost.
+      //
+      // Переносится ровно то, что влияет на построение адреса. Cookie,
+      // Authorization и прочее во внутренний запрос не уезжают: им там
+      // нечего делать.
+      const forwarded: Record<string, string> = {};
+      for (const name of ["host", "x-forwarded-proto", "x-forwarded-host"]) {
+        const value = req.headers[name];
+        if (typeof value === "string") forwarded[name] = value;
+      }
+      const inner = await app.inject({
+        url: `${OIDC_MOUNT}/.well-known/openid-configuration`,
+        headers: forwarded,
+      });
       return reply.code(inner.statusCode).type("application/json").send(inner.body);
     });
   }
@@ -112,6 +132,7 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   await registerAuditRoutes(app);
   await registerInteractionRoutes(app, provider);
   await registerPortal(app);
+  await registerDevsite(app);
   await registerLegalRoutes(app);
   return app;
 }
