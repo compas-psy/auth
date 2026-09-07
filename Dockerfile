@@ -26,6 +26,10 @@ COPY server/package.json server/package-lock.json* ./
 RUN npm ci --no-audit --no-fund
 COPY server/tsconfig.json ./
 COPY server/src ./src
+# Скрипты сборки — тоже вход: npm run build переносит ими миграции.
+# Без этой строки сборка падает на Cannot find module copy-migrations.mjs,
+# и видно это только внутри образа: локально лежит всё дерево.
+COPY server/scripts ./scripts
 RUN npm run build
 
 # ── Зависимости для выполнения, без сборочных ─────────────────────────

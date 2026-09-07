@@ -107,6 +107,18 @@ describe("образ", () => {
   it("исходники спецификации едут в образ: справочник строится из них", () => {
     expect(dockerfile).toContain("server/openapi ./openapi");
   });
+
+  it("сборочная стадия получает всё, что нужно npm run build", () => {
+    // Стадия копирует только названное. Скрипт переноса миграций
+    // подключён к build, но server/scripts в образ не копировался —
+    // и сборка падала на Cannot find module copy-migrations.mjs.
+    // Локально этого не видно: там лежит всё дерево.
+    const stage = dockerfile.slice(
+      dockerfile.indexOf("AS server-build"),
+      dockerfile.indexOf("RUN npm run build"),
+    );
+    expect(stage).toContain("server/scripts ./scripts");
+  });
 });
 
 describe("конфигурация прокси", () => {
