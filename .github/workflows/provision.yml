@@ -52,6 +52,11 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Ключ в секретах этого репозитория защищён парольной фразой —
+          # без неё он не разбирается вовсе (ssh: this private key is
+          # passphrase protected). Если секрета нет, значение пустое и
+          # действие ведёт себя как раньше: ключу без фразы это не мешает.
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           source: deploy/proxy/auth.cmpas.ru.conf
           target: /tmp/simpasid-proxy
@@ -63,6 +68,11 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Ключ в секретах этого репозитория защищён парольной фразой —
+          # без неё он не разбирается вовсе (ssh: this private key is
+          # passphrase protected). Если секрета нет, значение пустое и
+          # действие ведёт себя как раньше: ключу без фразы это не мешает.
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           command_timeout: 10m
           script: |
