@@ -1,0 +1,79 @@
+name: Клиент SimpasID
+
+# Регистрация OIDC-клиента на боевом сервере из репозитория, а не
+# руками в psql (Р-3). Запускается ТОЛЬКО вручную: заведение клиента —
+# осознанное действие, а не следствие push.
+#
+# КЛЮЧ. Он печатается один раз и попадает в журнал прогона. Журнал
+# виден тому, у кого есть доступ к Actions этого репозитория, — то
+# есть тому же кругу, что и секреты. Это осознанный размен: иначе
+# ключ пришлось бы вынимать руками с боевого сервера.
+
+on:
+  workflow_dispatch:
+    inputs:
+      client_id:
+        description: "Идентификатор клиента (например practice-web)"
+        required: true
+      client_name:
+        description: "Название, которое увидит человек"
+        required: true
+      redirect_uri:
+        description: "Адрес возврата (https, без фрагмента)"
+        required: false
+      product:
+        description: "Продукт"
+        required: true
+        type: choice
+        options: [practice, zapiski, moments]
+      public_client:
+        description: "Публичный клиент (мобильный, без ключа)"
+        type: boolean
+        default: false
+      first_party:
+        description: "Доступ к первичному токен-API. Только своим приложениям."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  add:
+    name: Зарегистрировать клиента
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Завести запись в реестре
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          CLIENT_ID: ${{ inputs.client_id }}
+          CLIENT_NAME: ${{ inputs.client_name }}
+          REDIRECT_URI: ${{ inputs.redirect_uri }}
+          PRODUCT: ${{ inputs.product }}
+          IS_PUBLIC: ${{ inputs.public_client }}
+          IS_FIRST_PARTY: ${{ inputs.first_party }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: 22
+          command_timeout: 5m
+          envs: CLIENT_ID,CLIENT_NAME,REDIRECT_URI,PRODUCT,IS_PUBLIC,IS_FIRST_PARTY
+          script: |
+            set -euo pipefail
+            cd /var/www/auth.cmpas.ru
+
+            args="add --id $CLIENT_ID --name $CLIENT_NAME --product $PRODUCT"
+            [ -z "$REDIRECT_URI" ] || args="$args --redirect $REDIRECT_URI"
+            [ "$IS_PUBLIC" != "true" ] || args="$args --public"
+            [ "$IS_FIRST_PARTY" != "true" ] || args="$args --first-party"
+
+            # exec, а не run: подключаемся к уже работающему приложению
+            # с его окружением. Отдельный контейнер потребовал бы
+            # передавать сюда пароль базы.
+            # shellcheck disable=SC2086
+            docker compose --project-name simpasid exec -T app \
+              node dist/cli/clients.js $args

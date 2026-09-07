@@ -14,6 +14,7 @@ import {
   webProvider, issueLoginState, consumeLoginState,
 } from "../services/providers/registry.js";
 import { linkOrCreateByProvider } from "../services/identityLink.js";
+import { findClient } from "./clients.js";
 
 /**
  * Экраны взаимодействия. Живут вне контура библиотеки: это наши экраны,
@@ -28,9 +29,26 @@ export async function registerInteractionRoutes(
     const details = await detailsFor(provider, req, reply);
     if (!details) return;
 
+    // Шаг разрешения. Провайдер спрашивает его ПОСЛЕ входа, и без
+    // ответа код клиенту не выдаётся вовсе: человек возвращался бы на
+    // экран входа снова и снова, а вход не складывался бы никогда.
+    //
+    // Отдельного экрана здесь нет и не будет. Человек не видит слов
+    // «OAuth», «scope», «разрешения» — это правило интерфейса. Договор
+    // он принял действием на экране входа, а клиенты у нас не чужие:
+    // динамическая регистрация выключена, каждый заведён нами вручную
+    // в реестре. Поэтому разрешение выдаётся молча.
+    if (details.prompt?.name === "consent") {
+      const grantId = await grantFor(provider, details);
+      const location = await provider.interactionResult(
+        req.raw, reply.raw, { consent: { grantId } }, { mergeWithLastSubmission: true },
+      );
+      return reply.code(303).header("location", location).send();
+    }
+
     const platform = coarsen(req.headers["user-agent"]).platform ?? "web";
     const terms = await currentDocument("cmpas_terms");
-    const service = serviceOf(details.params.client_id as string | undefined);
+    const service = await serviceOf(details.params.client_id as string | undefined);
 
     return reply
       .type("text/html; charset=utf-8")
@@ -230,14 +248,40 @@ export async function registerInteractionRoutes(
  * Подробности взаимодействия. Чужой или истёкший uid не открывает
  * ничего: библиотека сама проверяет привязку к cookie.
  */
+interface InteractionDetails {
+  params: Record<string, unknown>;
+  prompt?: { name: string };
+  grantId?: string;
+  session?: { accountId?: string };
+}
+
+/**
+ * Разрешение на запрошенный состав сведений.
+ *
+ * Существующий грант продлевается, а не заводится заново: иначе второй
+ * вход того же человека в тот же продукт плодил бы записи.
+ */
+async function grantFor(provider: Provider, details: InteractionDetails): Promise<string> {
+  const clientId = String(details.params.client_id ?? "");
+  const accountId = details.session?.accountId;
+  const existing = details.grantId
+    ? await provider.Grant.find(details.grantId)
+    : undefined;
+  const grant = existing ?? new provider.Grant({ accountId, clientId });
+  // Ровно то, что запросил клиент. Ничего сверх запрошенного не
+  // выдаётся: лишний состав сведений — это лишние данные у продукта.
+  grant.addOIDCScope(String(details.params.scope ?? "openid"));
+  return grant.save();
+}
+
 async function detailsFor(
   provider: Provider,
   req: FastifyRequest,
   reply: FastifyReply,
-): Promise<{ params: Record<string, unknown> } | null> {
+): Promise<InteractionDetails | null> {
   try {
     const details = await provider.interactionDetails(req.raw, reply.raw);
-    return details as unknown as { params: Record<string, unknown> };
+    return details as unknown as InteractionDetails;
   } catch {
     await reply.code(404).send({ error: "interaction_not_found" });
     return null;
@@ -250,9 +294,21 @@ async function detailsFor(
  * домен, и смена домена без объяснения это ровно то, чему учат
  * не доверять.
  */
-function serviceOf(clientId: string | undefined): Product {
+/**
+ * Какой продукт назван на экране входа.
+ *
+ * Берётся из реестра клиентов (колонка product), а не угадывается по
+ * префиксу client_id. Прежняя эвристика объявляла ПРАКТИКОЙ всё, что
+ * не начинается с zapiski/moments: клиент ЗАПИСОК, названный
+ * «notes-desktop», показал бы человеку чужое имя продукта. Тексты
+ * экранов берутся из макета дословно, и подстановка чужого названия —
+ * дефект приёмки, а не мелочь.
+ *
+ * Клиент без указанного продукта и неизвестный клиент — ПРАКТИКА:
+ * экран обязан открыться, а не упасть.
+ */
+export async function serviceOf(clientId: string | undefined): Promise<Product> {
   if (!clientId) return "practice";
-  if (clientId.startsWith("zapiski")) return "zapiski";
-  if (clientId.startsWith("moments")) return "moments";
-  return "practice";
+  const client = await findClient(clientId);
+  return client?.product ?? "practice";
 }

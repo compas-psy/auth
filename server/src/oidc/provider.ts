@@ -16,6 +16,45 @@ function interactionUrl(_ctx: unknown, interaction: { uid: string }): string {
   return `/interaction/${interaction.uid}`;
 }
 
+/**
+ * Claim'ы учётной записи. Вынесены из замыкания findAccount, чтобы
+ * свойство «неподтверждённая почта наружу не уходит» можно было
+ * проверить тестом, а не надеяться на него.
+ *
+ * ПОЧЕМУ email отдаётся только подтверждённым. Продукт на next-auth
+ * связывает вход с существующим пользователем ПО ПОЧТЕ и на
+ * email_verified не смотрит вовсе (проверено через context7:
+ * packages/core/src/lib/actions/callback/handle-login.ts). Рецепт
+ * ПРАКТИКИ включает allowDangerousEmailAccountLinking осознанно —
+ * без него живой пользователь получил бы OAuthAccountNotLinked вместо
+ * входа. Но тогда неподтверждённая почта в claim'е — это готовый
+ * захват чужой учётной записи продукта: назвал чужой адрес, вошёл в
+ * чужие данные. Доверие продукт оказал нам, значит и проверка наша.
+ */
+export type AccountClaims = { sub: string } & Record<string, unknown>;
+
+export async function accountClaims(sub: string): Promise<AccountClaims | undefined> {
+  const { rows } = await getPool().query<{
+    id: string; display_name: string | null; email: string | null; verified_at: Date | null;
+  }>(
+    `SELECT a.id, a.display_name, e.email, e.verified_at
+     FROM accounts a
+     LEFT JOIN account_emails e ON e.account_id = a.id AND e.is_primary
+     WHERE a.id = $1 AND a.status = 'active'`,
+    [sub],
+  );
+  const row = rows[0];
+  if (!row) return undefined;
+  const verified = row.verified_at !== null;
+  return {
+    sub,
+    // Не «email с email_verified: false», а отсутствие email.
+    email: verified ? (row.email ?? undefined) : undefined,
+    email_verified: verified,
+    name: row.display_name ?? undefined,
+  };
+}
+
 export async function buildProvider(): Promise<Provider> {
   const { issuer, isProduction } = loadConfig();
   const clients = (await listClients()).map(toProviderClient) as ClientMetadata[];
@@ -52,6 +91,25 @@ export async function buildProvider(): Promise<Provider> {
 
     // alg: none отвергается тем, что его нет в перечне.
     enabledJWA: { idTokenSigningAlgValues: ["RS256"] },
+
+    /**
+     * email и email_verified кладутся В САМ id_token.
+     *
+     * По умолчанию (conformIdTokenClaims: true) провайдер строго
+     * следует Core 1.0: при выдаче кода в id_token попадает только
+     * sub, остальное — на userinfo (документация oidc-provider, FAQ
+     * «ID Token does not include claims other than sub»).
+     *
+     * Нам это не подходит: наш собственный чек-лист переезда
+     * (docs/integration/checklist.md, пункт 4) требует от продукта
+     * ПРОВЕРЯТЬ email_verified в id_token, а рецепт обещает там email.
+     * Обещание и реализация обязаны совпадать — иначе продукт напишет
+     * проверку, которая молча ничего не проверит: undefined !== false.
+     *
+     * Утечки здесь нет: id_token уходит по обратному каналу тому же
+     * клиенту, который уже получил запрошенный им состав сведений.
+     */
+    conformIdTokenClaims: false,
 
     features: {
       devInteractions: { enabled: false },
@@ -103,26 +161,9 @@ export async function buildProvider(): Promise<Provider> {
     },
 
     async findAccount(_ctx: unknown, sub: string) {
-      const { rows } = await getPool().query(
-        `SELECT a.id, a.display_name, e.email, e.verified_at
-         FROM accounts a
-         LEFT JOIN account_emails e ON e.account_id = a.id AND e.is_primary
-         WHERE a.id = $1 AND a.status = 'active'`,
-        [sub],
-      );
-      const row = rows[0];
-      if (!row) return undefined;
-      return {
-        accountId: sub,
-        async claims() {
-          return {
-            sub,
-            email: row.email ?? undefined,
-            email_verified: row.verified_at !== null,
-            name: row.display_name ?? undefined,
-          };
-        },
-      };
+      const claims = await accountClaims(sub);
+      if (!claims) return undefined;
+      return { accountId: sub, claims: async () => claims };
     },
 
     renderError(ctx, out) {

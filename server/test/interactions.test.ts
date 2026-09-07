@@ -140,3 +140,36 @@ describe("экраны взаимодействия", () => {
     expect(r.statusCode).toBe(400);
   });
 });
+
+describe("экран называет продукт по реестру, а не по имени клиента", () => {
+  it("клиент ЗАПИСОК с произвольным именем показывает ЗАПИСКИ", async () => {
+    // Прежде продукт угадывался по префиксу client_id: всё, что не
+    // начинается с zapiski/moments, объявлялось ПРАКТИКОЙ. Клиент
+    // ЗАПИСОК, названный «notes-desktop», показал бы человеку чужое
+    // имя продукта — расхождение интерфейса и макета, то есть дефект
+    // приёмки. В реестре для этого есть колонка product.
+    const { serviceOf } = await import("../src/oidc/interactions.js");
+    await getPool().query(
+      `INSERT INTO oidc_clients
+         (client_id, client_name, client_secret, redirect_uris, auth_method, first_party, product)
+       VALUES ('notes-desktop', 'ЗАПИСКИ', $1, ARRAY['https://n.test/cb'],
+               'client_secret_basic', false, 'zapiski')
+       ON CONFLICT (client_id) DO NOTHING`,
+      ["n".repeat(43)],
+    );
+    expect(await serviceOf("notes-desktop")).toBe("zapiski");
+  });
+
+  it("клиент без указанного продукта считается ПРАКТИКОЙ", async () => {
+    expect(await serviceOf_("test")).toBe("practice");
+  });
+
+  it("неизвестный клиент не роняет экран", async () => {
+    expect(await serviceOf_("нет-такого")).toBe("practice");
+  });
+});
+
+async function serviceOf_(id: string): Promise<string> {
+  const { serviceOf } = await import("../src/oidc/interactions.js");
+  return serviceOf(id);
+}

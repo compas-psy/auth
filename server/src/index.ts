@@ -61,8 +61,31 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
     return reply.code(status).send({ error: status >= 500 ? "unavailable" : "bad_request" });
   });
 
-  app.setNotFoundHandler(async (_req, reply) =>
-    reply.code(404).send({ error: "not_found" }));
+  /**
+   * Ненайденный адрес. Человеку — экран, программе — код.
+   *
+   * Раньше отвечал JSON всем подряд, и человек, набравший
+   * auth.cmpas.ru, получал {"error":"not_found"} — машинную ошибку на
+   * домене, куда он пришёл входить. Различаем по Accept, тем же
+   * способом, что и обработчик отказов выше.
+   */
+  app.setNotFoundHandler(async (req, reply) => {
+    const wantsHtml = String(req.headers.accept ?? "").includes("text/html");
+    if (wantsHtml) {
+      return reply
+        .code(404)
+        .type("text/html; charset=utf-8")
+        .header("cache-control", "no-store")
+        .send(renderScreen("NotFound", {}));
+    }
+    return reply.code(404).send({ error: "not_found" });
+  });
+
+  /**
+   * Корень домена — портал аккаунта. Здесь человек и ожидает
+   * оказаться: «Аккаунт СИМПАС» — то, за чем он сюда пришёл.
+   */
+  app.get("/", async (_req, reply) => reply.redirect("/account", 302));
 
   app.get("/healthz", async (_req, reply) => {
     try {

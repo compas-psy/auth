@@ -51,6 +51,7 @@ const TITLES: Record<string, string> = {
   Unavailable: "Вход временно недоступен",
   IdentityTaken: "Этот аккаунт уже привязан",
   ProviderFailed: "Войти не получилось",
+  NotFound: "Такой страницы нет",
 };
 
 const PROVIDER_TITLES: Record<string, string> = {
@@ -76,6 +77,16 @@ ${legalLine(version)}
     return `<div class="screen"><main class="card" role="alert">
 <h1>${escapeHtml(errors.unavailableTitle)}</h1>
 <p class="subtitle">${escapeHtml(errors.unavailable)}</p>
+</main></div>`;
+  }
+  // Текст экрана в макете отсутствует — см. пометку в wording.ts.
+  // Отдаётся разметкой, а не скриптом: страница может быть открыта по
+  // ошибочной ссылке, где скрипту неоткуда взяться.
+  if (screen === "NotFound") {
+    return `<div class="screen"><main class="card">
+<h1>${escapeHtml(errors.notFoundTitle)}</h1>
+<p class="subtitle">${escapeHtml(errors.notFound)}</p>
+<p><a class="primary" href="/account">${escapeHtml(errors.notFoundAction)}</a></p>
 </main></div>`;
   }
   if (screen === "IdentityTaken") {
