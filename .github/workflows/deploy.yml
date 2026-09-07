@@ -9,12 +9,15 @@ name: Выкладка
 # те же три секрета.
 
 on:
-  push:
+  # Выкладка идёт ТОЛЬКО после зелёных проверок. Прямой триггер на push
+  # запускал бы её параллельно с тестами, и в бой уезжало бы то, что
+  # ещё не проверено, — а узнавали бы мы об этом от людей.
+  workflow_run:
+    workflows: ["Сборка и проверки"]
+    types: [completed]
     branches: ["main"]
-    paths-ignore:
-      - "**/*.md"
-      - "design/**"
-      - "docs/**"
+  # Ручной запуск — на случай, когда надо выложить уже проверенное
+  # (перевыкладка после правки на сервере, откат к прошлому коммиту).
   workflow_dispatch:
 
 concurrency:
@@ -30,8 +33,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production
+    # Красные проверки в бой не уезжают. При ручном запуске условие
+    # не применяется: там решение принимает человек осознанно.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Берём тот же коммит, который проверяла сборка, а не HEAD ветки.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Загрузить ключ
         run: |
@@ -47,7 +58,7 @@ jobs:
           # «то, что сейчас в ветке». Иначе между проверкой и выкладкой
           # успевает влезть чужой пуш, и на сервер уезжает непроверенное.
           # Заодно снимается зависимость от имени ветки по умолчанию.
-          DEPLOY_SHA: ${{ github.sha }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           ssh -i ~/.ssh/deploy_key \
             "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" \
