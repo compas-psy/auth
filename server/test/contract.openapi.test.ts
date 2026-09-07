@@ -135,6 +135,51 @@ describe("реализация соответствует спецификаци
     }
   });
 
+  /**
+   * Первичный токен-API открыт ТОЛЬКО клиентам с first_party = true, и
+   * заголовок X-Client-Id — единственное, чем клиент себя называет.
+   * Пока спецификация об этом молчит, чужой разработчик пишет клиента
+   * без заголовка, получает 403 и не понимает, почему: справочник
+   * ресурса разработчика ГЕНЕРИРУЕТСЯ отсюда, другого источника у него
+   * нет. Это не украшение спецификации, а работоспособность рецепта.
+   */
+  it("каждая ручка /v1/auth требует заголовок X-Client-Id по спецификации", () => {
+    const scheme = spec.components.securitySchemes.firstPartyClient;
+    expect(scheme).toEqual({
+      type: "apiKey",
+      in: "header",
+      name: "X-Client-Id",
+      description: expect.any(String),
+    });
+
+    const authPaths = Object.entries(spec.paths as Record<string, Record<string, {
+      security?: Array<Record<string, unknown>>;
+      responses?: Record<string, unknown>;
+    }>>).filter(([path]) => path.startsWith("/auth/"));
+    expect(authPaths.length).toBeGreaterThan(0);
+
+    for (const [path, methods] of authPaths) {
+      for (const [method, op] of Object.entries(methods)) {
+        const names = (op.security ?? []).flatMap((s) => Object.keys(s));
+        expect({ path, method, names }).toEqual(
+          { path, method, names: ["firstPartyClient"] });
+        // Отказ чужому клиенту тоже объявлен: иначе рецепт не
+        // объясняет, что означает 403 и что с ним делать.
+        expect({ path, method, has403: "403" in (op.responses ?? {}) })
+          .toEqual({ path, method, has403: true });
+      }
+    }
+  });
+
+  it("сервер и вправду отвергает /v1/auth без X-Client-Id", async () => {
+    // Спецификация может обещать что угодно; проверяется поведение.
+    for (const url of ["/v1/auth/methods", "/v1/auth/email/start"]) {
+      const r = await app.inject({ method: "POST", url, payload: {} });
+      expect({ url, code: r.statusCode }).toEqual({ url, code: 403 });
+      expect(r.json()).toEqual({ error: "forbidden_client" });
+    }
+  });
+
   it("адрес сервера — auth.cmpas.ru, а не устаревший api.simpas.ru", () => {
     expect(spec.servers[0].url).toBe("https://auth.cmpas.ru/v1");
     expect(JSON.stringify(spec)).not.toContain("api.simpas.ru");

@@ -25,7 +25,7 @@ on:
         description: "Продукт"
         required: true
         type: choice
-        options: [practice, zapiski, moments]
+        options: [practice, zapiski, moments, steps]
       public_client:
         description: "Публичный клиент (мобильный, без ключа)"
         type: boolean

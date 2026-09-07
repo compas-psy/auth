@@ -14,6 +14,7 @@ export const PRODUCT_NAMES = {
   practice: "ПРАКТИКА",
   zapiski: "ЗАПИСКИ",
   moments: "МОМЕНТЫ",
+  steps: "ШАГИ",
 } as const;
 
 export type ProductCode = keyof typeof PRODUCT_NAMES;
@@ -23,6 +24,9 @@ export const PRODUCT_ACCUSATIVE = {
   practice: "ПРАКТИКУ",
   zapiski: "ЗАПИСКИ",
   moments: "МОМЕНТЫ",
+  // Винительный совпадает с именительным, как у ЗАПИСОК и МОМЕНТОВ:
+  // «Вход в ШАГИ», «Вернуться в ШАГИ».
+  steps: "ШАГИ",
 } as const;
 
 export const PROVIDER_NAMES = {

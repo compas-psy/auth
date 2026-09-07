@@ -11,3 +11,8 @@ keys/
 *.jwk
 portal/dist/
 devsite/dist/
+
+# Сборка котлин-клиента (clients/android).
+clients/android/build/
+clients/android/.gradle/
+clients/android/.kotlin/

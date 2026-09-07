@@ -318,7 +318,8 @@ paths:
         Какие способы входа показывать на этой платформе. Внешний способ входа
         появляется в мобильном приложении только если для него подключён
         проверенный нативный набор средств. Вход по почте доступен всегда.
-      security: []
+      security:
+        - firstPartyClient: []
       parameters:
         - name: platform
           in: query
@@ -331,6 +332,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AuthMethods" }
+        "403": { $ref: "#/components/responses/ForbiddenClient" }
 
   /auth/email/start:
     post:
@@ -341,7 +343,8 @@ paths:
         Отправляет код из письма. Отвечает 202 всегда — независимо от того, есть
         ли такая учётная запись: разные ответы превращают эту ручку в способ
         узнать, зарегистрирован ли человек.
-      security: []
+      security:
+        - firstPartyClient: []
       requestBody:
         required: true
         content:
@@ -364,7 +367,8 @@ paths:
       description: |
         Меняет код из письма на пару токенов. После пяти неверных попыток код
         гасится безвозвратно и нужен новый.
-      security: []
+      security:
+        - firstPartyClient: []
       requestBody:
         required: true
         content:
@@ -389,7 +393,8 @@ paths:
         Меняет код, полученный приложением от внешнего сервиса, на нашу пару
         токенов. Код проверяется на сервере внешнего сервиса, а не принимается
         на слово; его токены после обмена не сохраняются.
-      security: []
+      security:
+        - firstPartyClient: []
       parameters:
         - $ref: "#/components/parameters/ProviderName"
       requestBody:
@@ -416,7 +421,8 @@ paths:
       description: |
         Меняет токен обновления на новую пару. Токен обновления одноразовый:
         предъявление уже использованного гасит все токены этого устройства.
-      security: []
+      security:
+        - firstPartyClient: []
       requestBody:
         required: true
         content:
@@ -437,7 +443,8 @@ paths:
       tags: [auth]
       summary: Выйти
       description: Завершает сеанс этого устройства. Отвечает 204 в любом случае.
-      security: []
+      security:
+        - firstPartyClient: []
       requestBody:
         required: true
         content:
@@ -454,6 +461,20 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Ключ доступа, выданный при входе.
+
+    firstPartyClient:
+      type: apiKey
+      in: header
+      name: X-Client-Id
+      description: |
+        Идентификатор приложения. Первичный токен-API открыт ТОЛЬКО
+        приложениям экосистемы (first_party); всем остальным — вход по
+        OIDC с редиректом. Запрос без этого заголовка или с чужим
+        идентификатором получает 403 forbidden_client.
+
+        Секрета здесь нет и быть не может: приложение на устройстве
+        человека сохранить секрет не в состоянии, а вход спроектирован
+        так, что знание идентификатора ничего не даёт.
 
   parameters:
     EmailId:
@@ -526,7 +547,7 @@ components:
   schemas:
     ProductCode:
       type: string
-      enum: [practice, zapiski, moments]
+      enum: [practice, zapiski, moments, steps]
       description: Продукт экосистемы.
 
     ProviderCode:

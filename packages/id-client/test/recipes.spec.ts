@@ -123,9 +123,74 @@ describe("рецепты переезда исполняются, а не тол
   });
 
   it("во всех рецептах верный адрес сервиса", () => {
-    for (const file of ["practice.md", "zapiski.md", "checklist.md"]) {
+    for (const file of ["practice.md", "zapiski.md", "checklist.md", "practice-android.md"]) {
       const text = readFileSync(join(DOCS, file), "utf8");
       expect(text).not.toContain("api.simpas.ru");
     }
+  });
+});
+
+/**
+ * Мобильный рецепт проверяется иначе, чем веб-рецепты: исполнить его
+ * блоки на JVM отсюда нельзя. Зато можно потребовать, чтобы он не
+ * обещал того, чего в клиенте нет, и не звал туда, куда требование
+ * ходить запрещает.
+ */
+describe("мобильный рецепт ПРАКТИКИ", () => {
+  const CLIENT = join(
+    HERE, "../../../clients/android/src/main/kotlin/ru/cmpas/simpasid/SimpasIdClient.kt");
+  const recipe = readFileSync(join(DOCS, "practice-android.md"), "utf8");
+  const client = readFileSync(CLIENT, "utf8");
+
+  it("каждый вызов из рецепта есть в клиенте", () => {
+    // Переименование метода не должно тихо превращать рецепт в
+    // документацию на несуществующее API.
+    const called = new Set(
+      [...recipe.matchAll(/simpasId\.([A-Za-z]+)\(/g)].map((m) => m[1]!));
+    // Список задан явно: без него достаточно убрать «simpasId.» перед
+    // вызовом, и проверка станет зелёной, ничего не проверяя. Так и
+    // случилось при первом заходе.
+    for (const required of
+      ["authMethods", "startEmailAuth", "verifyEmailAuth", "exchangeProviderCode"]) {
+      expect({ required, shown: called.has(required) }).toEqual({ required, shown: true });
+    }
+    for (const name of called) {
+      expect({ name, exists: new RegExp(`fun ${name}\\(`).test(client) })
+        .toEqual({ name, exists: true });
+    }
+  });
+
+  it("платформы из рецепта объявлены в клиенте", () => {
+    for (const m of recipe.matchAll(/Platform\.([A-Z]+)/g)) {
+      expect({ v: m[1], known: client.includes(`${m[1]}("`) }).toEqual({ v: m[1], known: true });
+    }
+  });
+
+  it("рецепт не зовёт в браузер и не предлагает webview", () => {
+    const text = plainText("practice-android.md");
+    for (const forbidden of ["Custom Tab", "WebView", "webview входа"]) {
+      expect({ forbidden, mentionedAsWay: text.includes(`через ${forbidden}`) })
+        .toEqual({ forbidden, mentionedAsWay: false });
+    }
+    expect(text).toContain("Ни Custom Tab, ни мобильный веб, ни редирект");
+  });
+
+  it("рецепт говорит про код из письма, а не про ссылку", () => {
+    const text = plainText("practice-android.md");
+    expect(text).toContain("код из письма, а не ссылка");
+    expect(recipe).toContain("verifyEmailAuth");
+  });
+
+  it("рецепт предупреждает про общий OkHttpClient приложения", () => {
+    // Единственное место, где ошибка отправляет ключ ПРАКТИКИ чужой
+    // службе. Молчание рецепта здесь дороже любой другой неточности.
+    const text = plainText("practice-android.md");
+    expect(text).toContain("AuthInterceptor");
+    expect(text).toContain("службе, которая его не просила");
+  });
+
+  it("рецепт не вписывает ключ доступа: у мобильного клиента его нет", () => {
+    expect(recipe).not.toMatch(/clientSecret/);
+    expect(plainText("practice-android.md")).toContain("first_party");
   });
 });

@@ -35,6 +35,24 @@ describe("ресурс разработчика", () => {
     }
   });
 
+  /**
+   * Пример из справочника разработчик копирует целиком. Пример с чужим
+   * заголовком — это 403 и потерянный час на выяснение, почему ручка,
+   * помеченная в спеке как открытая, отвечает отказом.
+   */
+  it("пример для первичного токен-API называет клиента, а не ключ доступа", () => {
+    const html = readFileSync(
+      join(OUT, "reference", `${slug("/auth/email/start")}.html`), "utf8");
+    expect(html).toContain("X-Client-Id");
+    expect(html).not.toContain("Authorization: Bearer");
+  });
+
+  it("пример для ручек аккаунта по-прежнему называет ключ доступа", () => {
+    const html = readFileSync(
+      join(OUT, "reference", `${slug("/account/sessions")}.html`), "utf8");
+    expect(html).toContain("Authorization: Bearer");
+  });
+
   it("адрес в примерах — auth.cmpas.ru, а не устаревший api.simpas.ru", () => {
     for (const file of [join(OUT, "index.html"), ...readdirSync(join(OUT, "reference"))
       .map((f) => join(OUT, "reference", f))]) {

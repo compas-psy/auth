@@ -22,12 +22,17 @@ interface Spec {
   servers: Array<{ url: string }>;
   tags?: Array<{ name: string; description?: string }>;
   paths: Record<string, Record<string, Operation>>;
-  components: { schemas: Record<string, SchemaObject> };
+  security?: Array<Record<string, unknown>>;
+  components: {
+    schemas: Record<string, SchemaObject>;
+    securitySchemes?: Record<string, { type?: string; in?: string; name?: string }>;
+  };
 }
 
 interface Operation {
   operationId?: string;
   summary?: string;
+  security?: Array<Record<string, unknown>>;
   description?: string;
   tags?: string[];
   responses?: Record<string, { description?: string; content?: Record<string, { schema?: SchemaObject }> }>;
@@ -244,7 +249,7 @@ function referencePage(
       body += `<h2>Поля ответа</h2>${fieldsTable(spec, schema)}`;
     }
 
-    body += `<h2>Запрос</h2><pre>${esc(curlFor(server, method, path))}</pre>`;
+    body += `<h2>Запрос</h2><pre>${esc(curlFor(spec, server, method, path, op))}</pre>`;
     const example = exampleFor(spec, schema);
     if (example) body += `<h2>Ответ · 200</h2><pre>${esc(example)}</pre>`;
   }
@@ -256,10 +261,31 @@ function referencePage(
     `<div class="wrap">${body}</div>`);
 }
 
-function curlFor(server: string, method: string, path: string): string {
+/**
+ * Заголовки примера берутся из security операции, а не из привычки.
+ *
+ * У ручек аккаунта это ключ доступа; у первичного токен-API — имя
+ * приложения (X-Client-Id), и ключа доступа там нет вовсе: его ещё не
+ * выдали, вход только начинается. Пример, зовущий не тот заголовок,
+ * даёт разработчику 403 на ручке, которую справочник только что
+ * описал как рабочую.
+ */
+function curlFor(
+  spec: Spec, server: string, method: string, path: string, op: Operation,
+): string {
   const url = `${server}${path.replace(/\{([^}]+)\}/g, "<$1>")}`;
   const verb = method === "get" ? "" : ` -X ${method.toUpperCase()}`;
-  return `curl${verb} ${url} \\\n  -H "Authorization: Bearer <ваш ключ>"`;
+  const schemes = spec.components.securitySchemes ?? {};
+  const names = (op.security ?? spec.security ?? []).flatMap((s) => Object.keys(s));
+  const headers = names.map((name) => {
+    const scheme = schemes[name];
+    if (scheme?.type === "apiKey" && scheme.in === "header") {
+      return `  -H "${scheme.name}: <идентификатор приложения>"`;
+    }
+    return `  -H "Authorization: Bearer <ваш ключ>"`;
+  });
+  if (headers.length === 0) return `curl${verb} ${url}`;
+  return `curl${verb} ${url} \\\n${headers.join(" \\\n")}`;
 }
 
 function deref(spec: Spec, schema: SchemaObject | undefined): SchemaObject | undefined {
