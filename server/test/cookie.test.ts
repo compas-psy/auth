@@ -61,16 +61,42 @@ describe("Р-2: cookie не поднимается на общий домен", 
     expect(providerSource()).toContain('session: "__Host-simpas_session"');
   });
 
-  it("cookie взаимодействия не носят префикс __Host-, и это не ошибка", async () => {
-    // Библиотека выдаёт их с суженным Path
-    // (lib/actions/authorization/interactions.js), а браузер отвергает
-    // __Host- при любом Path, кроме «/». Domain у них всё равно нет.
+  it("cookie взаимодействия доезжают до постоянного адреса возврата", async () => {
+    // Раньше здесь стояло «префикса __Host- у них нет, и это не
+    // ошибка»: библиотека выдавала их с Path=/interaction/<uid>. Это
+    // была не особенность, а ДЕФЕКТ. Возврат от внешнего сервиса
+    // приходит на /callback/<провайдер> — постоянный адрес, uid в него
+    // не вставить, — и суженную cookie браузер туда не отправлял.
+    // Вход через Яндекс падал на боевом с экраном «Вход временно
+    // недоступен», а проверка была зелёной, потому что отбрасывала Path.
     for (const c of await cookies()) {
-      if (/^__Host-/.test(c)) {
-        expect({ cookie: c.split("=")[0], rootPath: /Path=\/;/.test(c) })
-          .toEqual({ cookie: c.split("=")[0], rootPath: true });
-      }
+      const name = c.split("=")[0]!;
+      const root = /path=\/;/i.test(c);
+      // Префикс __Host- допустим ТОЛЬКО при Path=«/». Поставить его на
+      // cookie с узким путём — не усиление, а выброшенная браузером
+      // cookie и сломанный шаг. Одна такая правка едва не уехала в бой.
+      expect({ name, prefixMatchesPath: name.startsWith("__Host-") === root })
+        .toEqual({ name, prefixMatchesPath: true });
       expect(/Domain=/i.test(c)).toBe(false);
+    }
+  });
+
+  it("cookie взаимодействия доходит до корня, иначе возврат теряется", async () => {
+    const interaction = (await cookies())
+      .filter((c) => c.includes("simpas_interaction=") || c.includes("simpas_interaction.sig="));
+    expect(interaction.length).toBeGreaterThan(0);
+    for (const c of interaction) {
+      expect({ c: c.split("=")[0], root: /path=\/;/i.test(c) })
+        .toEqual({ c: c.split("=")[0], root: true });
+    }
+  });
+
+  it("Р-2: домен не задан ни у одной cookie", async () => {
+    // Путь расширился до «/», но хост остался один: auth.cmpas.ru.
+    // Cookie сервиса идентичности не имеет права уехать в продукт.
+    for (const c of await cookies()) {
+      expect({ c: c.split("=")[0], domain: /Domain=/i.test(c) })
+        .toEqual({ c: c.split("=")[0], domain: false });
     }
   });
 
