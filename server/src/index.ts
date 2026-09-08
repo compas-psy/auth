@@ -3,7 +3,7 @@ import middie from "@fastify/middie";
 import { loadConfig } from "./config.js";
 import { getPool } from "./db/pool.js";
 import { runMigrations } from "./db/migrate.js";
-import { logger } from "./lib/logging.js";
+import { logger, failureKind } from "./lib/logging.js";
 import { buildProvider, OIDC_MOUNT } from "./oidc/provider.js";
 import { registerAuthRoutes } from "./api/v1/auth.js";
 import { registerAccountRoutes } from "./api/v1/account.js";
@@ -48,7 +48,13 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
     const raw = (error as { statusCode?: unknown }).statusCode;
     const status = typeof raw === "number" && raw >= 400 ? raw : 500;
     if (status >= 500) {
-      logger.error({ event: "request_failed", outcome: "fail", status });
+      // kind — род отказа, а не его содержание: имя класса ошибки и код
+      // Postgres. Без него в журнале оставался один код состояния, и
+      // разобрать «вход не работает» было нечем.
+      logger.error({
+        event: "request_failed", outcome: "fail", status,
+        kind: failureKind(error),
+      });
     }
     const wantsHtml = String(req.headers.accept ?? "").includes("text/html");
     if (wantsHtml) {

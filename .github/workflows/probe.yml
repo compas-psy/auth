@@ -1,0 +1,120 @@
+name: Проба входа
+
+# Единый вход стал дверью ПО УМОЛЧАНИЮ для ПРАКТИКИ: при недоступности
+# auth.cmpas.ru человек не «выберет другой способ», а не попадёт в
+# продукт вовсе, включая админку. До этой пробы о падении мы узнавали
+# так же, как узнал бы посетитель, — от него самого.
+#
+# Проба ходит СНАРУЖИ и без ключей: она повторяет ровно то, что делает
+# браузер человека, и не имеет доступа ни к серверу, ни к базе.
+
+on:
+  schedule:
+    # Каждые 15 минут. Чаще не нужно: столько же занимает выкладка,
+    # и более частая проба ловила бы собственные перезапуски.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    name: Дверь открывается
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Пройти путь человека
+        id: probe
+        run: |
+          set -u
+          fail=0
+
+          code=$(curl -s -o meta.json -w '%{http_code}' --max-time 20 \
+            https://auth.cmpas.ru/.well-known/openid-configuration || echo 000)
+          echo "discovery -> $code"
+          [ "$code" = "200" ] || { echo "::error::метаданные недоступны ($code)"; fail=1; }
+
+          # Дверь, а не признаки жизни. /healthz отвечает и тогда,
+          # когда войти нельзя: ровно так и было, пока не обрабатывался
+          # шаг разрешения.
+          AUTHQ="client_id=practice-web&response_type=code"
+          AUTHQ="$AUTHQ&redirect_uri=https%3A%2F%2Fcmpas.ru%2Fapi%2Fauth%2Fcallback%2Fsimpasid"
+          AUTHQ="$AUTHQ&scope=openid+email&state=probe&nonce=probe"
+          AUTHQ="$AUTHQ&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+          AUTHQ="$AUTHQ&code_challenge_method=S256"
+
+          jar=$(mktemp)
+          loc=$(curl -s -o /dev/null -c "$jar" -w '%{redirect_url}' --max-time 20 \
+            "https://auth.cmpas.ru/oidc/auth?$AUTHQ" || echo "")
+          echo "запрос авторизации -> ${loc:-нет перенаправления}"
+
+          case "$loc" in
+            *"/interaction/"*)
+              screen=$(curl -s -b "$jar" --max-time 20 "$loc" || echo "")
+              if echo "$screen" | grep -q "Вход в"; then
+                echo "экран входа открывается"
+              else
+                echo "::error::по адресу взаимодействия нет экрана входа"; fail=1
+              fi
+              # Экран отказа отдаётся тем же кодом 200 при Accept: html,
+              # поэтому наличие разметки — ещё не работающий вход.
+              if echo "$screen" | grep -q "временно недоступен"; then
+                echo "::error::человеку показывается экран «вход временно недоступен»"
+                fail=1
+              fi
+              ;;
+            "")
+              echo "::error::запрос авторизации не перенаправил никуда"; fail=1 ;;
+            *)
+              echo "::error::запрос авторизации увёл не на экран входа: $loc"; fail=1 ;;
+          esac
+
+          # Сосед жив. Общее у нас только железо и прокси, но проверить
+          # это дешевле, чем узнать от него.
+          neighbour=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+            https://cmpas.ru/ || echo 000)
+          echo "cmpas.ru -> $neighbour"
+
+          exit $fail
+
+      - name: Сообщить, если дверь закрыта
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Заводится ОДНА задача, а не по одной на каждую пробу:
+            // сорок задач за десять часов — это не оповещение, а шум,
+            // в котором тонет и настоящее.
+            const title = "Вход недоступен: проба не проходит";
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: "open", labels: "проба-входа",
+            });
+            const run = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
+            if (open.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: open[0].number,
+                body: `Проба снова не прошла: ${run}`,
+              });
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title,
+              labels: ["проба-входа"],
+              body: [
+                "Проба входа не прошла. Единый вход — дверь по умолчанию для",
+                "ПРАКТИКИ, поэтому это потеря доступа к продукту, а не",
+                "неудобство.",
+                "",
+                `Журнал прогона: ${run}`,
+                "",
+                "Что смотреть: осмотр сервера (`Осмотр сервера` → вручную) —",
+                "он печатает отказы за 6 часов с родом ошибки и свод событий,",
+                "по которому видно, докуда доходит вход.",
+              ].join("\n"),
+            });

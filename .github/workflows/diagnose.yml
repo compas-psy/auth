@@ -72,13 +72,33 @@ jobs:
               || echo ".env не прочитан"
 
             echo
+            echo "== отказы сервиса за 6 часов =="
+            # Род отказа, а не его содержание: имя класса ошибки и код
+            # Postgres. Текста сообщения в журнале нет по построению —
+            # там ехали бы адреса и пути.
+            fails=$(docker logs --since 6h simpasid-app 2>&1 \
+              | grep -o '"event":"request_failed"[^}]*' \
+              | grep -o '"status":[0-9]*\|"kind":"[^"]*"' \
+              | paste - - 2>/dev/null | sort | uniq -c)
+            if [ -z "$fails" ]; then
+              echo "ОТКАЗОВ ЗА 6 ЧАСОВ НЕ БЫЛО"
+            else
+              echo "$fails"
+            fi
+
+            echo
             echo "== состояние схемы =="
             # Раньше применённость миграции ВЫВОДИЛАСЬ из устройства
             # запуска: listen происходит только после runMigrations,
             # значит отвечающий сервис миграции применил. Вывод верный,
             # но обязательство перед ПРАКТИКОЙ (sub не меняется) лучше
             # видеть, чем выводить. Команда только спрашивает.
-            schema=$(docker exec simpasid-app node dist/cli/schema.js 2>&1)
+            # «|| true» обязателен: при set -e неудачная подстановка
+            # роняет ВЕСЬ осмотр. Именно так и вышло в первый же
+            # запуск — команды на сервере ещё не было, и осмотр
+            # оборвался до клиентов, почты и ответа сервера. Осмотр не
+            # имеет права замолчать из-за одного своего шага.
+            schema=$(docker exec simpasid-app node dist/cli/schema.js 2>&1 || true)
             if [ -z "$schema" ]; then
               echo "СХЕМА НЕ ОПРОШЕНА — приложение не ответило"
             else
@@ -90,7 +110,7 @@ jobs:
             # Перечень ключей НЕ печатает: список смотрят чаще, чем
             # заводят клиента, и попадёт он не только тому, кто клиента
             # выпускал.
-            clients=$(docker exec simpasid-app node dist/cli/clients.js list 2>&1)
+            clients=$(docker exec simpasid-app node dist/cli/clients.js list 2>&1 || true)
             if [ -z "$clients" ]; then
               echo "КЛИЕНТОВ НЕТ — войти не сможет ни один продукт"
             else
