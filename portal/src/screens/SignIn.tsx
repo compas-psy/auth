@@ -34,6 +34,8 @@ export function SignIn({
 }: SignInProps) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /** Ожидание гасит ТОЛЬКО нажатый знак: остальные остаются живыми. */
+  const [pending, setPending] = useState<ProviderCode | null>(null);
   const isMobile = platform === "android" || platform === "ios";
 
   function submit(e: FormEvent) {
@@ -54,7 +56,6 @@ export function SignIn({
           {signIn.brand}
         </p>
         <h1>{signIn.title(service)}</h1>
-        <p className="subtitle">{signIn.subtitle}</p>
 
         {/* Провайдеры первым блоком — решение учредителя от 06.09.2026.
             Почта вторым, БЕЗ свёртки. */}
@@ -74,7 +75,8 @@ export function SignIn({
                       data-provider={p}
                       className="provider-disc"
                       aria-label={signIn.providerButton(p)}
-                      onClick={() => onProvider?.(p)}
+                      aria-busy={pending === p ? true : undefined}
+                      onClick={() => { setPending(p); onProvider?.(p); }}
                     />
                     <span className="provider-name">{PROVIDER_NAMES[p]}</span>
                   </span>
@@ -88,7 +90,7 @@ export function SignIn({
           <p className="provider-notice">{signIn.providerNotice}</p>
         </div>
 
-        <div className="divider" aria-hidden="true">{signIn.divider}</div>
+        <div className="divider" aria-hidden="true"><span>{signIn.divider}</span></div>
 
         <form data-block="email" onSubmit={submit} noValidate>
           <label htmlFor="signin-email">{signIn.emailLabel}</label>
@@ -98,6 +100,7 @@ export function SignIn({
             name="email"
             autoComplete="email"
             inputMode="email"
+            placeholder="you@example.com"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(null); }}
             aria-invalid={error ? true : undefined}
