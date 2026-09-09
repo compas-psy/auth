@@ -5,12 +5,12 @@ import { EnterCode } from "./screens/EnterCode";
 import { EmailRequired } from "./screens/EmailRequired";
 import { SignInUnavailable, IdentityTaken } from "./screens/Errors";
 import { AccountApp } from "./AccountApp";
-import type { ProductCode, ProviderCode } from "@wording";
+import type { ServiceCode, ProductCode, ProviderCode } from "@wording";
 
 interface State {
   screen?: string;
   uid?: string;
-  service?: ProductCode;
+  service?: ServiceCode;
   providers?: ProviderCode[];
   termsVersion?: string;
   platform?: "web" | "android" | "ios";
@@ -52,8 +52,21 @@ export function App({ state }: { state: State }) {
     }
   }
 
+  /**
+   * Экраны, которым нужен НАСТОЯЩИЙ продукт: ссылка «вернуться» ведёт
+   * в продукт, а в аккаунт возвращаться неоткуда — человек уже в нём.
+   *
+   * ОТКРЫТЫЙ ВОПРОС к учредителю: куда ведёт «вернуться» тому, кто
+   * набрал auth.cmpas.ru руками и ни из какого продукта не приходил.
+   * Пока — в ПРАКТИКУ, как было до появления заголовка про аккаунт:
+   * это поведение не меняется этой правкой, а лишь названо вслух.
+   */
+  function productOf(service: ServiceCode | undefined): ProductCode {
+    return service && service !== "account" ? service : "practice";
+  }
+
   if (screen.startsWith("Account")) {
-    return <AccountApp screen={screen} returnTo={state.service ?? "practice"} />;
+    return <AccountApp screen={screen} returnTo={productOf(state.service)} />;
   }
 
   switch (screen) {
@@ -73,7 +86,7 @@ export function App({ state }: { state: State }) {
       return <IdentityTaken />;
     case "Unavailable":
     case "LinkExpired":
-      return <SignInUnavailable service={state.service ?? "practice"} />;
+      return <SignInUnavailable service={productOf(state.service)} />;
     default:
       return (
         <SignIn

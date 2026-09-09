@@ -1,4 +1,16 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll, vi } from "vitest";
+
+// Письмо перехватывается: проверяем не «отправилось», а ЧТО именно.
+const sent: Array<{ kind: "link" | "code"; payload: string }> = [];
+vi.mock("../src/services/mailer.js", () => ({
+  sendMagicLink: vi.fn(async (_to: string, url: string) => {
+    sent.push({ kind: "link", payload: url });
+  }),
+  sendEmailCode: vi.fn(async (_to: string, code: string) => {
+    sent.push({ kind: "code", payload: code });
+  }),
+  resetMailer: vi.fn(),
+}));
 import type { FastifyInstance } from "fastify";
 import { closePool } from "../src/db/pool.js";
 import { resetData, ensureTestClient } from "./helpers.js";
@@ -57,6 +69,7 @@ beforeEach(async () => {
     exchange: vi.fn(async () => ({ subject: "y", email: "y@ya.ru", emailVerified: true })),
   };
   registerWebProvider(adapter);
+  sent.length = 0;
 });
 afterAll(async () => {
   clearWebProviders(); clearNativeAdapters();
@@ -94,5 +107,52 @@ describe("экран входа в телефонном браузере", () =>
     // иначе объяснение висит над пустым местом.
     expect(body).toContain("Провайдер увидит");
     expect(/"providers":\[\]/.test(body)).toBe(false);
+  });
+});
+
+/**
+ * Экран и письмо обязаны говорить одно и то же.
+ *
+ * С телефона человек увидел «Введите код из письма» и шесть клеток под
+ * цифры, а в письме пришла ССЫЛКА. Ввести в клетки было нечего: экран
+ * просил то, чего сервер не отправлял.
+ *
+ * Причина та же, что и с исчезнувшим знаком Яндекса: экран определял
+ * себя по платформе устройства и считал телефонный браузер мобильным
+ * приложением. Код из письма — способ входа НАШЕГО ПРИЛОЖЕНИЯ, где
+ * ссылка увела бы человека в почтовый клиент и из приложения наружу.
+ * Маршрут письма на экране взаимодействия шлёт ссылку ВСЕГДА
+ * (interactions.ts, sendMagicLink), и другого он не умеет.
+ */
+describe("экран входа и письмо обещают одно и то же", () => {
+  async function stateFor(userAgent: string): Promise<Record<string, unknown>> {
+    const body = await screenFor(userAgent);
+    const json = /<script id="state" type="application\/json">(.*?)<\/script>/s.exec(body);
+    return JSON.parse(json![1]!) as Record<string, unknown>;
+  }
+
+  it("с телефонного браузера экран не объявляет себя мобильным приложением", async () => {
+    expect((await stateFor(ANDROID)).platform).toBe("web");
+  });
+
+  it("письмо с телефона — ссылка, и экран обещает именно ссылку", async () => {
+    const start = await app.inject({ url: `/oidc/auth?${VALID}`, headers: HOST });
+    const uid = String(start.headers.location).replace("/interaction/", "");
+    const cookies = (start.headers["set-cookie"] as string[] | undefined ?? [])
+      .map((c) => c.split(";")[0]).join("; ");
+
+    const r = await app.inject({
+      method: "POST", url: `/interaction/${uid}/email`,
+      headers: { ...HOST, cookie: cookies, "user-agent": ANDROID },
+      payload: { email: "phone@ya.ru" },
+    });
+    expect(r.statusCode).toBe(200);
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.kind).toBe("link");
+    expect(sent[0]!.payload).toContain("/callback?token=");
+
+    // И экран, показанный тому же человеку, не должен просить цифры.
+    expect((await stateFor(ANDROID)).platform).toBe("web");
   });
 });

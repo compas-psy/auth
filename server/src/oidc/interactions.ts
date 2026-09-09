@@ -9,7 +9,8 @@ import { coarsen } from "../lib/useragent.js";
 import { getPool } from "../db/pool.js";
 import { loadConfig } from "../config.js";
 import { renderScreen } from "../ui/render.js";
-import type { Product } from "../services/accounts.js";
+import { PORTAL_CLIENT } from "./portalClient.js";
+import type { ServiceCode } from "../ui/wording.js";
 import {
   webProvider, issueLoginState, consumeLoginState,
 } from "../services/providers/registry.js";
@@ -46,7 +47,6 @@ export async function registerInteractionRoutes(
       return reply.code(303).header("location", location).send();
     }
 
-    const platform = coarsen(req.headers["user-agent"]).platform ?? "web";
     const terms = await currentDocument("cmpas_terms");
     const service = await serviceOf(details.params.client_id as string | undefined);
 
@@ -62,7 +62,19 @@ export async function registerInteractionRoutes(
         // это браузер, и вход провайдером здесь идёт редиректом.
         providers: await browserProviders(),
         termsVersion: terms?.version ?? "0.9",
-        platform: platform === "android" || platform === "ios" ? platform : "web",
+        /**
+         * Экран взаимодействия — БРАУЗЕРНЫЙ, чем бы человек его ни
+         * открыл. Здесь он определял себя по User-Agent, и с телефона
+         * получалось «Введите код из письма» с шестью клетками под
+         * цифры — а маршрут ниже отправляет ССЫЛКУ и другого не умеет.
+         * Вводить в клетки было нечего.
+         *
+         * Код из письма — способ входа НАШЕГО ПРИЛОЖЕНИЯ (12_NATIVE_AUTH.md):
+         * там ссылка увела бы человека в почтовый клиент и наружу из
+         * приложения. У приложения свой путь, первичный токен-API, и
+         * этого экрана оно не открывает вовсе.
+         */
+        platform: "web",
       }));
   });
 
@@ -309,8 +321,13 @@ async function detailsFor(
  * Клиент без указанного продукта и неизвестный клиент — ПРАКТИКА:
  * экран обязан открыться, а не упасть.
  */
-export async function serviceOf(clientId: string | undefined): Promise<Product> {
+export async function serviceOf(clientId: string | undefined): Promise<ServiceCode> {
   if (!clientId) return "practice";
+  // Портал аккаунта опознаётся ПО КЛИЕНТУ, а не по колонке product.
+  // В реестре у него practice — как у всего, что живёт рядом с
+  // ПРАКТИКОЙ, — и чинить заголовок правкой строки в базе значило бы
+  // лечить экран изменением данных.
+  if (clientId === PORTAL_CLIENT) return "account";
   const client = await findClient(clientId);
   return client?.product ?? "practice";
 }

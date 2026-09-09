@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { signIn, PROVIDER_NAMES, type ProductCode, type ProviderCode } from "@wording";
+import { signIn, PROVIDER_NAMES, type ServiceCode, type ProviderCode } from "@wording";
 
 export interface SignInProps {
-  service: ProductCode;
+  service: ServiceCode;
   /** Состав приходит с сервера (GET /v1/auth/methods), а не из сборки:
    *  приложение не должно показывать кнопку в пустоту. */
   providers: readonly ProviderCode[];
