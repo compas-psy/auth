@@ -1,6 +1,5 @@
-import Provider, { type ClientMetadata, type Configuration } from "oidc-provider";
+import Provider, { type Configuration } from "oidc-provider";
 import { PostgresAdapter } from "./adapter.js";
-import { listClients, toProviderClient } from "./clients.js";
 import { loadConfig } from "../config.js";
 import { loadOrCreateKeys } from "../lib/keys.js";
 import { getPool } from "../db/pool.js";
@@ -57,12 +56,27 @@ export async function accountClaims(sub: string): Promise<AccountClaims | undefi
 
 export async function buildProvider(): Promise<Provider> {
   const { issuer, isProduction } = loadConfig();
-  const clients = (await listClients()).map(toProviderClient) as ClientMetadata[];
   const jwks = loadOrCreateKeys();
 
   const configuration: Configuration = {
     adapter: PostgresAdapter as never,
-    clients,
+
+    /**
+     * Статического перечня клиентов НЕТ — и это не упущение.
+     *
+     * Перечень, прочитанный при запуске, означает, что клиент,
+     * заведённый после выкладки, не существует для работающего
+     * сервиса: именно так портал аккаунта отвечал живому человеку
+     * invalid_client, будучи заведённым в реестре. Отключение клиента
+     * точно так же не действовало бы до перезапуска.
+     *
+     * Клиентов отдаёт адаптер (server/src/oidc/adapter.ts): библиотека
+     * спрашивает его о каждом клиенте, которого нет в статическом
+     * перечне. Реестр oidc_clients — единственный источник истины,
+     * и он читается в момент запроса.
+     *
+     * НЕ ВОЗВРАЩАТЬ статический clients: это возвращает дефект.
+     */
     jwks,
 
     // PKCE обязателен для ВСЕХ клиентов, включая серверные

@@ -37,7 +37,8 @@ export async function resetData(): Promise<void> {
 
 /**
  * Клиент для тестов протокола. Реестр клиентов живёт в базе, а не в
- * конфигурации, — поэтому его надо завести до сборки сервера.
+ * конфигурации, и читается в момент запроса: заводить клиента до
+ * сборки сервера больше не обязательно (см. clients.dynamic.test.ts).
  */
 export async function ensureTestClient(): Promise<void> {
   await ensureSchema();

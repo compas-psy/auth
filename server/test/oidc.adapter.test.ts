@@ -94,10 +94,10 @@ describe("адаптер хранения", () => {
   });
 
   it("запись без срока жизни хранится бессрочно и находится", async () => {
-    // Client при динамической регистрации приходит без expiresIn;
+    // Эталонный адаптер объявляет expiresIn необязательным;
     // 'undefined seconds' в интервале уронило бы вставку.
-    const c = new PostgresAdapter("Client");
-    await c.upsert("cl1", { client_id: "cl1" }, undefined as unknown as number);
-    expect((await c.find("cl1"))?.client_id).toBe("cl1");
+    const g = new PostgresAdapter("Grant");
+    await g.upsert("gr1", { grantId: "gr1" }, undefined as unknown as number);
+    expect((await g.find("gr1"))?.grantId).toBe("gr1");
   });
 });

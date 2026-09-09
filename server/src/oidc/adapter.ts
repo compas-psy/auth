@@ -1,4 +1,5 @@
 import { getPool } from "../db/pool.js";
+import { findClient, toProviderClient } from "./clients.js";
 
 type Payload = Record<string, unknown>;
 
@@ -67,6 +68,8 @@ export class PostgresAdapter {
   }
 
   find(id: string): Promise<Payload | undefined> {
+    // Клиенты живут в реестре oidc_clients, а не в хранилище протокола.
+    if (this.type === "Client") return findRegisteredClient(id);
     return this.one("id", id);
   }
 
@@ -105,6 +108,29 @@ export class PostgresAdapter {
   async revokeByGrantId(grantId: string): Promise<void> {
     await getPool().query("DELETE FROM oidc_payloads WHERE grant_id = $1", [grantId]);
   }
+}
+
+/**
+ * Поиск клиента в реестре — НА КАЖДЫЙ ЗАПРОС, а не один раз при старте.
+ *
+ * Библиотека спрашивает адаптер о клиентах, которых нет в статическом
+ * перечне (lib/models/client.js, Client.find: сначала staticClients,
+ * затем this.adapter.find(id) — подтверждено context7). Мы статический
+ * перечень не задаём вовсе, поэтому единственный источник истины —
+ * таблица oidc_clients: заведение и отключение клиента действуют сразу.
+ *
+ * Пустые поля выбрасываются: null в метаданных библиотека считает
+ * заданным значением, и публичный клиент с client_secret: null
+ * перестаёт быть публичным (эталонная рекомендация адаптера —
+ * omitBy(data, isNull) для типа Client).
+ */
+async function findRegisteredClient(id: string): Promise<Payload | undefined> {
+  const record = await findClient(id);
+  if (!record) return undefined;
+  const metadata = toProviderClient(record);
+  return Object.fromEntries(
+    Object.entries(metadata).filter(([, v]) => v !== undefined && v !== null),
+  );
 }
 
 /** Уборка просроченного. Хранилище протокола не должно расти вечно. */
