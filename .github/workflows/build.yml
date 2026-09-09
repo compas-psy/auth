@@ -167,6 +167,11 @@ jobs:
           check /account 200
           check /dev 302
           check /dev/ 200
+          # Шрифт — часть экрана, а не украшение: без него кегль и ритм
+          # макета рассыпаются. Собраться и уехать в образ мало, ровно
+          # так уже случилось с /dev — оно собиралось и не отдавалось.
+          check /assets/fonts/geist-cyrillic.woff2 200
+          check /assets/fonts/geist-latin.woff2 200
           exit $fail
 
       - name: Адреса в метаданных абсолютны и на нашем домене

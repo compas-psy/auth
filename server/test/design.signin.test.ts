@@ -227,3 +227,35 @@ describe("ошибка не двигает экран", () => {
     expect(screen).not.toContain("align-items: center");
   });
 });
+
+/**
+ * Портал аккаунта — такой же клиент, как продукты.
+ *
+ * До этой правки он ходил в /v1 только с cookie, а API принимает только
+ * Bearer: портал не открывался НИ РАЗУ И НИ У КОГО. Проверено запросом
+ * к собранному серверу — «/v1/account с одной cookie → 401», а внутри
+ * <div id="root"> при этом пусто.
+ */
+describe("портал предъявляет себя как клиент, а не как свой", () => {
+  it("у портала есть свой идентификатор и адрес возврата", async () => {
+    const { PORTAL_CLIENT, PORTAL_REDIRECT } = await import("../src/oidc/portalClient.js");
+    expect(PORTAL_CLIENT).toBe("account-portal");
+    expect(PORTAL_REDIRECT).toBe("https://auth.cmpas.ru/account/callback");
+  });
+
+  it("адрес возврата совпадает с тем, куда уводит сам портал", () => {
+    // Расхождение здесь — отказ провайдера на возврате, и понять его по
+    // экрану нельзя: адрес возврата сверяется байт в байт.
+    const client = readFileSync(
+      fileURLToPath(new URL("../../portal/src/auth/oidc.ts", import.meta.url)), "utf8");
+    expect(client).toContain('PORTAL_REDIRECT_PATH = "/account/callback"');
+    expect(client).toContain('PORTAL_CLIENT_ID = "account-portal"');
+  });
+
+  it("оболочка регистрации умеет завести публичного клиента", () => {
+    // Секрета у портала нет и быть не может: он живёт в браузере.
+    const yml = readFileSync(
+      fileURLToPath(new URL("../../.github/workflows/client.yml", import.meta.url)), "utf8");
+    expect(yml).toContain("public_client");
+  });
+});
