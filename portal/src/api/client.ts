@@ -27,6 +27,8 @@ export const API_CALLS = [
 
 const BASE = "/v1";
 
+import { currentToken, forgetToken } from "../auth/oidc";
+
 export interface Account {
   id: string;
   email: string;
@@ -80,15 +82,21 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Ключ доступа, а не cookie. API принимает только Bearer, и портал
+  // ходит туда же и тем же способом, что и продукты: отдельного
+  // внутреннего пути для наших интерфейсов не существует.
+  const token = currentToken();
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    credentials: "same-origin",
     headers: {
       accept: "application/json",
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },
   });
+  // Ключ протух или отозван — он больше не годится ни для чего.
+  if (res.status === 401) forgetToken();
   if (!res.ok) {
     let code = "request_failed";
     try {

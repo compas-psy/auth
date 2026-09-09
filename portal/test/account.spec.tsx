@@ -75,13 +75,25 @@ describe("портал аккаунта: внутреннего пути не с
       const text = readFileSync(file, "utf8");
       for (const _ of text.matchAll(/\bfetch\s*\(/g)) callSites.add(file);
     }
-    // Ровно два места, и оба названы. Второй fetch где-нибудь в экране
-    // прошёл бы мимо любой проверки путей, а мимо этой не пройдёт.
-    //   api/client.ts — API аккаунта, только /v1;
-    //   App.tsx       — вход, только /interaction/ (это контур OIDC,
-    //                   а не API аккаунта, и в спецификации v1 его нет
-    //                   по существу, а не по недосмотру).
-    expect([...callSites].sort()).toEqual(["src/App.tsx", "src/api/client.ts"]);
+    // Ровно три места, и все три названы. Четвёртый fetch где-нибудь в
+    // экране прошёл бы мимо любой проверки путей, а мимо этой не
+    // пройдёт.
+    //   api/client.ts  — API аккаунта, только /v1;
+    //   App.tsx        — вход, только /interaction/ (контур OIDC, а не
+    //                    API аккаунта: в спецификации v1 его нет по
+    //                    существу, а не по недосмотру);
+    //   auth/oidc.ts   — обмен кода на ключ доступа, только /oidc/token.
+    expect([...callSites].sort())
+      .toEqual(["src/App.tsx", "src/api/client.ts", "src/auth/oidc.ts"]);
+
+    // Вход портала ходит ровно в одну ручку протокола и никуда больше.
+    const auth = readFileSync("src/auth/oidc.ts", "utf8");
+    for (const m of auth.matchAll(/fetch\(\s*[`"']([^`"']+)/g)) {
+      expect(m[1]).toBe("/oidc/token");
+    }
+    // Ключ доступа не сохраняется: строка хранилища с ключом входа
+    // переживает вкладку и достаётся любому скрипту на этом домене.
+    expect(auth).not.toContain("localStorage");
 
     const client = readFileSync("src/api/client.ts", "utf8");
     expect(client).toMatch(/const BASE = "\/v1";/);
