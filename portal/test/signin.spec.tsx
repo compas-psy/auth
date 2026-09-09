@@ -98,7 +98,14 @@ describe("экран входа: юридическая конструкция",
   it("человек видит, куда он входит", () => {
     render(<SignIn {...base} service="practice" providers={[]} />);
     expect(screen.getByRole("heading", { name: "Вход в ПРАКТИКУ" })).toBeVisible();
-    expect(screen.getByText("Один аккаунт СИМПАС — ПРАКТИКА, ЗАПИСКИ, МОМЕНТЫ, ШАГИ.")).toBeVisible();
+  });
+
+  it("и не видит на входе ничего про остальную экосистему", () => {
+    // Решение учредителя 09.09.2026 по новому пакету макетов: человек
+    // входит в КОНКРЕТНЫЙ продукт. Перечень продуктов остался в
+    // портале аккаунта, где он уже вошёл и перечень по делу.
+    const { container } = render(<SignIn {...base} service="practice" providers={[]} />);
+    expect(container.textContent).not.toContain("Один аккаунт");
   });
 
   it("ни одна кнопка провайдера не выделена среди других", () => {

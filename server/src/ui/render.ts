@@ -32,6 +32,16 @@ export function renderScreen(screen: string, state: ScreenState): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="same-origin">
 <title>${escapeHtml(TITLES[screen] ?? "Вход в СИМПАС")}</title>
+<!-- Шрифт грузится ПЕРВЫМ и со своего домена. Экран всё это время
+     рисовался системным: в токенах Geist был назван, а ссылки на файл
+     не было нигде — ни здесь, ни в стилях. Кегль и ритм макета
+     рассчитаны под Geist и рядом с другим шрифтом рассыпаются.
+     Кириллица — отдельным подмножеством; сборка с vercel её не
+     содержит вовсе. Почему не Google Fonts — см. fonts.css. -->
+<link rel="preload" as="font" type="font/woff2" crossorigin
+ href="/assets/fonts/geist-cyrillic.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin
+ href="/assets/fonts/geist-latin.woff2">
 <link rel="stylesheet" href="/assets/portal.css">
 </head>
 <body>
@@ -66,7 +76,6 @@ function noScriptBody(screen: string, state: ScreenState): string {
 <p class="brand"><img src="/assets/simpas-mark.svg" alt="" width="28" height="28"
  >${escapeHtml(signIn.brand)}</p>
 <h1>${escapeHtml(SERVICE_TITLES[service] ?? SERVICE_TITLES.practice)}</h1>
-<p class="subtitle">${escapeHtml(signIn.subtitle)}</p>
 <p class="provider-notice">${escapeHtml(signIn.providerNotice)}</p>
 ${legalLine(version)}
 </main></div>`;
