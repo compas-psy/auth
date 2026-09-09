@@ -11,7 +11,11 @@ import {
 
 let app: FastifyInstance;
 const FIRST_PARTY = { "x-client-id": "practice-mobile" };
-const body = { provider_code: "abc", device_key: "d", platform: "android" };
+// Код провайдера — длинный и приметный НАРОЧНО: короткое "abc"
+// случайно встречалось внутри UUID, и проверка «код не осел в базе»
+// краснела на удачном жребии, ничего при этом не находя.
+const PROVIDER_CODE = "provider-code-must-not-be-stored-a7f3";
+const body = { provider_code: PROVIDER_CODE, device_key: "d", platform: "android" };
 
 beforeAll(async () => {
   await resetData(); await ensureTestClient();
@@ -103,7 +107,7 @@ describe("нативный обмен кода провайдера", () => {
     await app.inject({ method: "POST", url: "/v1/auth/provider/yandex/native",
       headers: FIRST_PARTY, payload: body });
     const { rows } = await getPool().query("SELECT * FROM identities");
-    expect(JSON.stringify(rows)).not.toContain("abc");
+    expect(JSON.stringify(rows)).not.toContain(PROVIDER_CODE);
   });
 
   it("провайдер без подключённого SDK не обслуживается вовсе", async () => {
