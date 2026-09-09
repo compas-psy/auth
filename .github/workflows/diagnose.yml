@@ -137,18 +137,20 @@ jobs:
                 echo "$id: адреса возврата нет — первичный клиент, экран входа ему не нужен"
                 continue
               fi
-              body=$(mktemp)
-              code=$(curl -s -o "$body" -w '%{http_code}' --max-time 10 -G \
+              # Ответ забирается В ПЕРЕМЕННУЮ, без временного файла:
+              # осмотр не оставляет на сервере ни одного следа и не
+              # выполняет ни одной команды, что-либо меняющей.
+              out=$(curl -s -w '\n%{http_code}' --max-time 10 -G \
                 https://auth.cmpas.ru/oidc/auth \
                 --data-urlencode "client_id=$id" \
                 --data-urlencode "redirect_uri=$first" \
                 --data "response_type=code&scope=openid+email&state=osmotr&nonce=osmotr&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256" \
-                || echo "000")
+                || printf '\n000')
+              code=$(printf '%s' "$out" | tail -1)
               case "$code" in
                 303|302) echo "$id: экран входа открывается ($code)" ;;
-                *)       echo "$id: ЭКРАН ВХОДА НЕ ОТКРЫВАЕТСЯ ($code) — $(head -c 200 "$body")" ;;
+                *)       echo "$id: ЭКРАН ВХОДА НЕ ОТКРЫВАЕТСЯ ($code) — $(printf '%s' "$out" | head -c 200)" ;;
               esac
-              rm -f "$body"
             done
 
             echo

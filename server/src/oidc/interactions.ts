@@ -3,7 +3,7 @@ import type Provider from "oidc-provider";
 import { issueMagicLink, redeemMagicLink } from "../services/magicLink.js";
 import { sendMagicLink } from "../services/mailer.js";
 import { currentDocument } from "../services/consents.js";
-import { availableProviders } from "../services/providers/native.js";
+import { browserProviders } from "../services/providers/native.js";
 import { writeAudit } from "../services/audit.js";
 import { coarsen } from "../lib/useragent.js";
 import { getPool } from "../db/pool.js";
@@ -58,7 +58,9 @@ export async function registerInteractionRoutes(
       .send(renderScreen("SignIn", {
         uid: req.params.uid,
         service,
-        providers: await availableProviders(platform),
+        // Состав способов — по ВИДУ ЭКРАНА, а не по устройству:
+        // это браузер, и вход провайдером здесь идёт редиректом.
+        providers: await browserProviders(),
         termsVersion: terms?.version ?? "0.9",
         platform: platform === "android" || platform === "ios" ? platform : "web",
       }));

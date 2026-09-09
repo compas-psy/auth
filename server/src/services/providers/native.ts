@@ -71,6 +71,26 @@ export function isMobilePlatform(platform: string): boolean {
  * там, где ключи есть. Провайдер с ключами, но без SDK, на мобильном
  * экране не показывается — так требует 12_NATIVE_AUTH.md §2.2.
  */
+/**
+ * Способы входа НА ЭКРАНЕ В БРАУЗЕРЕ — независимо от того, с телефона
+ * человек пришёл или из-за стола.
+ *
+ * Отдельная функция, а не availableProviders("web") по месту: разница
+ * между «платформой устройства» и «видом экрана» уже стоила человеку
+ * работающего способа войти. Экран входа считал состав по User-Agent,
+ * телефонный браузер попадал в мобильную ветку — и знак Яндекса
+ * пропадал, оставив на экране объяснение про внешний сервис над пустым
+ * местом.
+ *
+ * Правило «провайдер без нативного SDK не показывается» (12_NATIVE_AUTH.md
+ * §2.2) — про НАШЕ ПРИЛОЖЕНИЕ, где вход идёт через SDK провайдера.
+ * В браузере вход идёт редиректом, и редирект на телефоне работает так
+ * же, как на столе.
+ */
+export function browserProviders(): Promise<Provider[]> {
+  return availableProviders("web");
+}
+
 export async function availableProviders(platform: string): Promise<Provider[]> {
   if (isMobilePlatform(platform)) {
     return PROVIDERS.filter((p) => adapters.has(p));
