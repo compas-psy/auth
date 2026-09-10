@@ -10,7 +10,7 @@ export function Security({
   identities: Identity[];
   /** Продукты, уже переехавшие на единый вход. */
   productsMigrated: ProductCode[];
-  returnTo: ProductCode;
+  returnTo: ProductCode | null;
   onUnlink?: (id: string) => void;
   notifyNewLogin?: boolean;
   /** Отказ от сервера — кадр, который обязан существовать (тест Т6). */

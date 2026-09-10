@@ -5,7 +5,7 @@ import type { FastifyInstance } from "fastify";
 import fastifyStatic from "@fastify/static";
 import { renderScreen } from "./render.js";
 import { currentDocument } from "../services/consents.js";
-import type { Product } from "../services/accounts.js";
+import { PRODUCT_HOME, PRODUCT_NAMES, type ProductCode, type ServiceCode } from "./wording.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -93,6 +93,8 @@ export async function registerPortal(app: FastifyInstance): Promise<void> {
     });
   }
 
+  registerReturn(app);
+
   app.get<{ Params: { "*"?: string } }>("/account", accountHandler);
   app.get<{ Params: { "*"?: string } }>("/account/*", accountHandler);
 
@@ -118,7 +120,46 @@ export async function registerPortal(app: FastifyInstance): Promise<void> {
   }
 }
 
-function readReturnTo(query: unknown): Product {
+/**
+ * Откуда человек пришёл в кабинет — и есть ли ему куда возвращаться.
+ *
+ * "account" значит «пришёл сам»: набрал auth.cmpas.ru, чтобы
+ * посмотреть свою учётную запись, дать или отозвать согласия,
+ * поправить сведения о себе. Звать такого «обратно в ПРАКТИКУ» —
+ * выдумка про его путь; до этой правки звали именно так, потому что
+ * ПРАКТИКА стояла умолчанием.
+ *
+ * Значение принимается ТОЛЬКО как код продукта из перечня (У-3,
+ * 02_SIMPASID.md §1027): свободная форма — это открытый редирект.
+ * ШАГИ раньше в перечень не попадали, и человек из ШАГОВ молча
+ * становился человеком из ПРАКТИКИ.
+ */
+function readReturnTo(query: unknown): ServiceCode {
   const value = (query as { return_to?: unknown } | undefined)?.return_to;
-  return value === "zapiski" || value === "moments" ? value : "practice";
+  return typeof value === "string" && value in PRODUCT_NAMES
+    ? (value as ProductCode)
+    : "account";
+}
+
+/**
+ * Дверь из кабинета наружу.
+ *
+ * Ссылки «вернуться в продукт» и «открыть» стояли на трёх экранах и
+ * вели в /return/…, которого не существовало: собранный сервер отвечал
+ * 404. Макет требует обратного — «портал не ловушка»
+ * (09_ACCOUNT_DESIGN_ADDENDUM.md §168).
+ *
+ * Адрес берётся из перечня, а не из запроса: подставленный адрес
+ * превратил бы наш домен в пересыльный пункт для чужих ссылок.
+ */
+function registerReturn(app: FastifyInstance): void {
+  app.get<{ Params: { product: string } }>("/return/:product", async (req, reply) => {
+    const product = req.params.product;
+    const home = product in PRODUCT_NAMES ? PRODUCT_HOME[product as ProductCode] : null;
+    // Адреса нет — значит и ссылки на экране нет; сюда можно попасть
+    // только по набранному вручную или устаревшему адресу. Отвечает
+    // общий обработчик: человеку экран, программе код.
+    if (!home) return reply.callNotFound();
+    return reply.redirect(home, 302);
+  });
 }

@@ -53,20 +53,18 @@ export function App({ state }: { state: State }) {
   }
 
   /**
-   * Экраны, которым нужен НАСТОЯЩИЙ продукт: ссылка «вернуться» ведёт
-   * в продукт, а в аккаунт возвращаться неоткуда — человек уже в нём.
-   *
-   * ОТКРЫТЫЙ ВОПРОС к учредителю: куда ведёт «вернуться» тому, кто
-   * набрал auth.cmpas.ru руками и ни из какого продукта не приходил.
-   * Пока — в ПРАКТИКУ, как было до появления заголовка про аккаунт:
-   * это поведение не меняется этой правкой, а лишь названо вслух.
+   * Продукт, из которого человек пришёл, — или НИЧЕГО, если он пришёл
+   * сам. Кабинет для того и существует: посмотреть свою учётную
+   * запись, дать или отозвать согласия, поправить сведения о себе.
+   * Придумывать такому человеку продукт, «откуда он якобы пришёл», —
+   * значит врать ему в шапке каждого экрана.
    */
-  function productOf(service: ServiceCode | undefined): ProductCode {
-    return service && service !== "account" ? service : "practice";
+  function returnProduct(service: ServiceCode | undefined): ProductCode | null {
+    return service && service !== "account" ? service : null;
   }
 
   if (screen.startsWith("Account")) {
-    return <AccountApp screen={screen} returnTo={productOf(state.service)} />;
+    return <AccountApp screen={screen} returnTo={returnProduct(state.service)} />;
   }
 
   switch (screen) {
@@ -86,7 +84,7 @@ export function App({ state }: { state: State }) {
       return <IdentityTaken />;
     case "Unavailable":
     case "LinkExpired":
-      return <SignInUnavailable service={productOf(state.service)} />;
+      return <SignInUnavailable service={state.service ?? "account"} />;
     default:
       return (
         <SignIn

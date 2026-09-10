@@ -11,7 +11,7 @@ import type { AcceptedDocument } from "../api/client";
  */
 export function Privacy({
   documents, returnTo,
-}: { documents: AcceptedDocument[]; returnTo: ProductCode }) {
+}: { documents: AcceptedDocument[]; returnTo: ProductCode | null }) {
   return (
     <Shell title={privacy.title} returnTo={returnTo}>
       <p className="subtitle">{privacy.body}</p>

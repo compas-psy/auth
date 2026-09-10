@@ -22,7 +22,7 @@ export function Communications({
 }: {
   communications: Communication[];
   termsVersion: string;
-  returnTo: ProductCode;
+  returnTo: ProductCode | null;
   onToggle?: (channel: "email" | "push", next: boolean) => void;
   onRevokeAll?: () => void;
 }) {
