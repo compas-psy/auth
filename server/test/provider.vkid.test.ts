@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { createHash } from "node:crypto";
-import { createVkidAdapter, VKID_ENDPOINTS } from "../src/services/providers/vkid.js";
+import { createVkidAdapter, VKID_ENDPOINTS, vkidFromEnv } from "../src/services/providers/vkid.js";
 
 /**
  * VK ID — не «ещё один Яндекс».
@@ -158,5 +158,63 @@ describe("VK ID: обмен кода", () => {
     const adapter = createVkidAdapter({ ...CONFIG, fetchImpl: impl });
     await expect(adapter.exchange({ ...RETURN, deviceId: undefined })).rejects.toThrow();
     expect((impl as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(0);
+  });
+});
+
+describe("VK ID: подключение по ключам из окружения", () => {
+  const saved = process.env.VKID_CLIENT_ID;
+  afterEach(() => {
+    if (saved === undefined) delete process.env.VKID_CLIENT_ID;
+    else process.env.VKID_CLIENT_ID = saved;
+  });
+
+  it("без ключа провайдер не подключается вовсе", () => {
+    delete process.env.VKID_CLIENT_ID;
+    expect(vkidFromEnv("https://auth.cmpas.ru")).toBeNull();
+  });
+
+  it("подключается с идентификатором приложения", () => {
+    process.env.VKID_CLIENT_ID = "53814927";
+    const adapter = vkidFromEnv("https://auth.cmpas.ru");
+    expect(adapter).not.toBeNull();
+    expect(new URL(adapter!.authorizationUrl("s".repeat(43))).searchParams.get("client_id"))
+      .toBe("53814927");
+  });
+
+  /**
+   * Учредитель 10.09.2026 положил в VKID_CLIENT_ID «Защищённый ключ»
+   * приложения вместо «ID приложения». Кнопка на экране появилась,
+   * человек нажал — и увидел от VK «Ошибка загрузки»: приложения с
+   * таким client_id у них нет.
+   *
+   * Отказа при этом не было НИГДЕ: ни в нашем журнале, ни на экране.
+   * Догадаться было можно только по виду значения.
+   */
+  it("защищённый ключ вместо идентификатора приложения не подключается", () => {
+    process.env.VKID_CLIENT_ID = "LrkGuB43OdzCkdL3SYsz";
+    expect(vkidFromEnv("https://auth.cmpas.ru")).toBeNull();
+  });
+
+  it("пробелы по краям не делают ключ негодным", () => {
+    process.env.VKID_CLIENT_ID = "  53814927\n";
+    expect(vkidFromEnv("https://auth.cmpas.ru")).not.toBeNull();
+  });
+
+  it("отказ подключения виден в журнале и не несёт значения ключа", () => {
+    process.env.VKID_CLIENT_ID = "LrkGuB43OdzCkdL3SYsz";
+    const lines: string[] = [];
+    const write = vi.spyOn(process.stdout, "write")
+      .mockImplementation((chunk: unknown) => { lines.push(String(chunk)); return true; });
+    try {
+      vkidFromEnv("https://auth.cmpas.ru");
+    } finally {
+      write.mockRestore();
+    }
+    const printed = lines.join("");
+    expect(printed).toContain("provider_not_connected");
+    expect(printed).toContain("vkid");
+    // Значение — это ключ приложения. В журнале ему не место, даже
+    // когда оно положено не в ту переменную.
+    expect(printed).not.toContain("LrkGuB43OdzCkdL3SYsz");
   });
 });

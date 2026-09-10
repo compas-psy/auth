@@ -309,3 +309,24 @@ jobs:
             else
               echo "fail2ban на сервере не установлен — эта версия отпадает"
             fi
+
+            echo
+            echo "== вход через провайдеров: что подключилось при запуске =="
+            # Отвечает на вопрос «почему на экране нет кнопки» и на
+            # обратный «почему кнопка есть, а VK её не узнаёт». Имена
+            # провайдеров человек и так видит на экране входа.
+            connected=$(docker logs simpasid-app 2>&1 \
+              | grep -o '"event":"providers_connected"[^}]*' | tail -1)
+            if [ -z "$connected" ]; then
+              echo "запись о подключении провайдеров не найдена (образ старее этой проверки)"
+            else
+              echo "$connected"
+            fi
+            # Негодный ключ провайдера. Значение ключа в этой записи не
+            # печатается по построению — только вид отказа и длина.
+            refused=$(docker logs simpasid-app 2>&1 \
+              | grep -o '"event":"provider_not_connected"[^}]*' | sort -u)
+            if [ -n "$refused" ]; then
+              echo "ОТКАЗ ПОДКЛЮЧЕНИЯ:"
+              echo "$refused"
+            fi

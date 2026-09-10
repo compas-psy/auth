@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { getPool, withTransaction } from "../../db/pool.js";
 import { sha256 } from "../../lib/hash.js";
+import { logger } from "../../lib/logging.js";
 import type { Provider } from "../accounts.js";
 import type { NativeIdentity } from "./native.js";
 
@@ -52,7 +53,16 @@ export function connectedWebProviders(): Provider[] {
   return [...webProviders.keys()];
 }
 
-/** Подключает то, для чего есть ключи. Зовётся один раз при сборке сервера. */
+/**
+ * Подключает то, для чего есть ключи. Зовётся один раз при сборке сервера.
+ *
+ * Итог пишется в журнал списком. Раньше состав кнопок на экране входа
+ * нельзя было узнать иначе, чем открыв экран: провайдер без ключей
+ * молча не подключался, провайдер с негодным ключом молча подключался,
+ * и оба случая выглядели одинаково — «кнопки нет» или «кнопка не
+ * работает», без причины. Имена провайдеров секретом не являются:
+ * человек видит их на экране входа.
+ */
 export async function connectConfiguredProviders(issuer: string): Promise<void> {
   const { yandexFromEnv } = await import("./yandex.js");
   const yandex = yandexFromEnv(issuer);
@@ -61,6 +71,8 @@ export async function connectConfiguredProviders(issuer: string): Promise<void> 
   const { vkidFromEnv } = await import("./vkid.js");
   const vkid = vkidFromEnv(issuer);
   if (vkid) registerWebProvider(vkid);
+
+  logger.info({ event: "providers_connected", providers: connectedWebProviders() });
 }
 
 const STATE_TTL_MINUTES = 15;
