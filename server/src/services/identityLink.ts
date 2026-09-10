@@ -1,4 +1,4 @@
-import { withTransaction } from "../db/pool.js";
+import { getPool, withTransaction } from "../db/pool.js";
 import { createAccountWithEmail, findAccountByEmail, type Provider } from "./accounts.js";
 
 /**
@@ -10,6 +10,26 @@ import { createAccountWithEmail, findAccountByEmail, type Provider } from "./acc
  * телефону или платёжному профилю запрещено — да и нечем: этих полей
  * у нас нет.
  */
+/**
+ * Кому уже принадлежит эта личность провайдера.
+ *
+ * Нужно там, где провайдер НЕ дал подтверждённой почты. Если связь уже
+ * есть, требование И-5 выполнено давно: учётная запись за этой связью
+ * заведена только после подтверждения адреса. Гонять человека по кругу
+ * через экран «Нужна электронная почта» при каждом входе значит
+ * наказывать его за то, что провайдер не отдаёт признака подтверждения.
+ */
+export async function accountByIdentity(
+  provider: Provider,
+  subject: string,
+): Promise<string | null> {
+  const { rows } = await getPool().query<{ account_id: string }>(
+    "SELECT account_id FROM identities WHERE provider = $1 AND subject = $2",
+    [provider, subject],
+  );
+  return rows[0]?.account_id ?? null;
+}
+
 export async function linkOrCreateByProvider(i: {
   provider: Provider;
   subject: string;

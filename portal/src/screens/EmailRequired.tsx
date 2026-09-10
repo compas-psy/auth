@@ -3,6 +3,12 @@ import { emailRequired, signIn, type ProviderCode } from "@wording";
 
 export interface EmailRequiredProps {
   provider: ProviderCode;
+  /**
+   * Адрес, который провайдер всё-таки назвал, но не подтвердил.
+   * Подставляется в поле: человеку остаётся нажать кнопку, а не
+   * набирать заново то, что система уже знает.
+   */
+  claimedEmail?: string;
   onSubmit: (email: string) => void;
 }
 
@@ -12,8 +18,8 @@ export interface EmailRequiredProps {
  * Экран существует потому, что И-5 требует подтверждённой почты у каждой
  * учётной записи, а отдаёт ли её каждый провайдер — не проверено.
  */
-export function EmailRequired({ provider, onSubmit }: EmailRequiredProps) {
-  const [email, setEmail] = useState("");
+export function EmailRequired({ provider, claimedEmail, onSubmit }: EmailRequiredProps) {
+  const [email, setEmail] = useState(claimedEmail ?? "");
   const [error, setError] = useState<string | null>(null);
 
   function submit(e: FormEvent) {

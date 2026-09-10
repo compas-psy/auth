@@ -15,6 +15,8 @@ interface State {
   termsVersion?: string;
   platform?: "web" | "android" | "ios";
   provider?: ProviderCode;
+  /** Адрес, названный провайдером без подтверждения. */
+  email?: string;
 }
 
 /** Скрывает адрес частично: t…v@ya.ru. Так в источнике (§7.2). */
@@ -79,7 +81,8 @@ export function App({ state }: { state: State }) {
           onSubmit={() => undefined} onResend={() => submitEmail(email)} />
       );
     case "EmailRequired":
-      return <EmailRequired provider={state.provider ?? "yandex"} onSubmit={submitEmail} />;
+      return <EmailRequired provider={state.provider ?? "yandex"}
+        claimedEmail={state.email} onSubmit={submitEmail} />;
     case "IdentityTaken":
       return <IdentityTaken />;
     case "Unavailable":
