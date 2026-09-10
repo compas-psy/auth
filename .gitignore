@@ -16,3 +16,7 @@ devsite/dist/
 clients/android/build/
 clients/android/.gradle/
 clients/android/.kotlin/
+
+# Отпечаток инкрементальной сборки tsc. Он менялся от каждого прогона
+# проверок и попадал в чужие ветки как «изменение».
+*.tsbuildinfo

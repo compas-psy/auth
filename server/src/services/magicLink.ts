@@ -18,6 +18,14 @@ export interface IssueInput {
   /** Редакция соглашения, принятая действием на экране входа. */
   termsVersion?: string;
   marketingOptIn?: boolean;
+  /**
+   * Личность провайдера, ждущая подтверждения почты (И-5).
+   *
+   * Едет ВМЕСТЕ С ТОКЕНОМ, а не остаётся привязанной к попытке входа:
+   * человек может открыть ссылку в другой вкладке или на другом
+   * устройстве, и связь с попыткой там уже не поможет.
+   */
+  pendingIdentity?: { provider: string; subject: string };
 }
 
 export type IssueResult =
@@ -28,6 +36,10 @@ export interface RedeemResult {
   accountId: string;
   /** true, если этот вход завёл учётную запись. Нужен экрану D1. */
   created: boolean;
+  /** Личность провайдера, которую надо привязать после подтверждения. */
+  pendingIdentity?: { provider: string; subject: string };
+  /** Адрес, который человек подтвердил этой ссылкой. */
+  email: string;
 }
 
 /**
@@ -49,10 +61,13 @@ export async function issueMagicLink(i: IssueInput): Promise<IssueResult> {
   const token = randomBytes(32).toString("base64url");
   await getPool().query(
     `INSERT INTO magic_link_tokens
-       (email, token_hash, device_key, platform, terms_version, marketing_opt_in, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6, now() + make_interval(mins => $7::int))`,
+       (email, token_hash, device_key, platform, terms_version, marketing_opt_in,
+        pending_provider, pending_subject, expires_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now() + make_interval(mins => $9::int))`,
     [i.email, sha256(token), i.deviceKey, i.platform,
-     i.termsVersion ?? null, i.marketingOptIn ?? false, LINK_TTL_MINUTES],
+     i.termsVersion ?? null, i.marketingOptIn ?? false,
+     i.pendingIdentity?.provider ?? null, i.pendingIdentity?.subject ?? null,
+     LINK_TTL_MINUTES],
   );
   return { token, expiresInMinutes: LINK_TTL_MINUTES };
 }
@@ -73,8 +88,10 @@ export async function redeemMagicLink(
     const { rows } = await client.query<{
       id: string; email: string; terms_version: string | null;
       marketing_opt_in: boolean; platform: string;
+      pending_provider: string | null; pending_subject: string | null;
     }>(
-      `SELECT id, email, terms_version, marketing_opt_in, platform
+      `SELECT id, email, terms_version, marketing_opt_in, platform,
+              pending_provider, pending_subject
        FROM magic_link_tokens
        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
        FOR UPDATE SKIP LOCKED`,
@@ -87,12 +104,21 @@ export async function redeemMagicLink(
   });
   if (!claimed) return null;
 
+  // Личность провайдера, ждущая подтверждения, возвращается наверх:
+  // привязывает её маршрут, потому что только он знает, чем ответить
+  // человеку, если эта личность занята другим (артборд C3).
+  const pendingIdentity = claimed.pending_provider && claimed.pending_subject
+    ? { provider: claimed.pending_provider, subject: claimed.pending_subject }
+    : undefined;
+
   const existing = await findAccountByEmail(claimed.email);
-  if (existing) return { accountId: existing.accountId, created: false };
+  if (existing) {
+    return { accountId: existing.accountId, created: false, pendingIdentity, email: claimed.email };
+  }
 
   const { accountId } = await createAccountWithEmail(claimed.email);
   await recordAcceptance(accountId, claimed, ctx);
-  return { accountId, created: true };
+  return { accountId, created: true, pendingIdentity, email: claimed.email };
 }
 
 /**

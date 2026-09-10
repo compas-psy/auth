@@ -260,3 +260,73 @@ jobs:
             echo "== что отвечает сам сервер =="
             curl -sI --max-time 10 https://auth.cmpas.ru/healthz | head -3 || echo "HTTPS с самого сервера не отвечает"
             curl -s -o /dev/null -w 'локально 3200 -> %{http_code}\n' --max-time 5 http://127.0.0.1:3200/healthz || true
+
+            echo
+            echo "== SSH: пределы одновременных подключений =="
+            # Д-3: рукопожатие рвётся до единой команды, непостоянно.
+            # Первый подозреваемый — MaxStartups: sshd начинает СБРАСЫВАТЬ
+            # ещё не прошедшие проверку подключения, когда их больше
+            # порога. Со стороны клиента это выглядит ровно так, как
+            # выглядело у нас: reset за доли секунды, без причины.
+            #
+            # `sshd -T` печатает то, с чем sshd РАБОТАЕТ, а не то, что
+            # лежит в файле, — как nginx -T выше. Файл читается только
+            # если действующую конфигурацию не выдали.
+            sshd -T 2>/dev/null \
+              | grep -E '^(maxstartups|maxsessions|logingracetime|persource)' \
+              || grep -hiE '^[[:space:]]*(MaxStartups|MaxSessions|LoginGraceTime|PerSource)' \
+                   /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf 2>/dev/null \
+              || echo "настройки sshd не прочитаны (скорее всего не хватает прав)"
+
+            echo
+            echo "== SSH: за сутки отказов, по причинам =="
+            # Только причины и счётчики. Ни одного адреса: в журнале
+            # sshd их полно, и это чужие адреса, а не наши.
+            #
+            # «drop connection #N» — это и есть след MaxStartups. Если
+            # он тут появится, догадка перестанет быть догадкой.
+            reasons=$(journalctl -u ssh -u sshd --since '24 hours ago' --no-pager 2>/dev/null \
+              | grep -oE 'drop connection #[0-9]+|Timeout before authentication|maximum authentication attempts|Connection closed by authenticating user|Connection reset by|banner exchange' \
+              | sed -E 's/#[0-9]+/#N/' | sort | uniq -c)
+            if [ -z "$reasons" ]; then
+              echo "журнал sshd за сутки пуст или недоступен (нужны права root или группа adm)"
+            else
+              echo "$reasons"
+            fi
+
+            echo
+            echo "== fail2ban: считает ли он наши прогоны подозрительными =="
+            # Второй подозреваемый. Выкладка и осмотр приходят с адресов
+            # раннеров GitHub — каждый раз с нового, и каждый раз это
+            # новое подключение по ключу. Список забаненных не
+            # печатается: там чужие адреса.
+            if command -v fail2ban-client >/dev/null 2>&1; then
+              fail2ban-client status 2>/dev/null | grep -i 'jail list' \
+                || echo "fail2ban установлен, но не отвечает (нужны права root)"
+              fail2ban-client status sshd 2>/dev/null \
+                | grep -E 'Currently failed|Total failed|Currently banned|Total banned' \
+                || echo "тюрьмы sshd нет или она не прочитана"
+            else
+              echo "fail2ban на сервере не установлен — эта версия отпадает"
+            fi
+
+            echo
+            echo "== вход через провайдеров: что подключилось при запуске =="
+            # Отвечает на вопрос «почему на экране нет кнопки» и на
+            # обратный «почему кнопка есть, а VK её не узнаёт». Имена
+            # провайдеров человек и так видит на экране входа.
+            connected=$(docker logs simpasid-app 2>&1 \
+              | grep -o '"event":"providers_connected"[^}]*' | tail -1)
+            if [ -z "$connected" ]; then
+              echo "запись о подключении провайдеров не найдена (образ старее этой проверки)"
+            else
+              echo "$connected"
+            fi
+            # Негодный ключ провайдера. Значение ключа в этой записи не
+            # печатается по построению — только вид отказа и длина.
+            refused=$(docker logs simpasid-app 2>&1 \
+              | grep -o '"event":"provider_not_connected"[^}]*' | sort -u)
+            if [ -n "$refused" ]; then
+              echo "ОТКАЗ ПОДКЛЮЧЕНИЯ:"
+              echo "$refused"
+            fi

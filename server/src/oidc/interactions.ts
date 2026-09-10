@@ -14,7 +14,12 @@ import type { ServiceCode } from "../ui/wording.js";
 import {
   webProvider, issueLoginState, consumeLoginState,
 } from "../services/providers/registry.js";
-import { linkOrCreateByProvider } from "../services/identityLink.js";
+import { linkOrCreateByProvider, accountByIdentity } from "../services/identityLink.js";
+import {
+  rememberPendingIdentity, takePendingIdentity, attachIdentity,
+} from "../services/pendingIdentity.js";
+// Provider уже занят типом библиотеки — берём код провайдера под своим именем.
+import type { Provider as ProviderCode } from "../services/accounts.js";
 import { findClient } from "./clients.js";
 
 /**
@@ -91,12 +96,18 @@ export async function registerInteractionRoutes(
     if (!email.includes("@")) return reply.code(400).send({ error: "invalid_request" });
 
     const terms = await currentDocument("cmpas_terms");
+    // Личность провайдера, ждущая подтверждения почты, если человек
+    // пришёл сюда с экрана «Нужна электронная почта».
+    const pending = await takePendingIdentity(req.params.uid);
     const issued = await issueMagicLink({
       email,
       // Ссылка привязана к тому взаимодействию, из которого начата.
       deviceKey: req.params.uid,
       platform: "web",
       termsVersion: terms?.version,
+      pendingIdentity: pending
+        ? { provider: pending.provider, subject: pending.subject }
+        : undefined,
     });
     if (!("throttled" in issued)) {
       const url = `${loadConfig().issuer}/interaction/${req.params.uid}/callback?token=${issued.token}`;
@@ -191,15 +202,45 @@ export async function registerInteractionRoutes(
       return html(400, "ProviderFailed");
     }
 
+    /**
+     * Связь с этим аккаунтом провайдера уже есть?
+     *
+     * Тогда И-5 выполнено давно: учётная запись за этой связью заведена
+     * только после подтверждения адреса. Провайдер, который не отдаёт
+     * признака подтверждения, не повод гонять человека через экран
+     * «Нужна электронная почта» при КАЖДОМ входе.
+     */
+    const alreadyLinked = await accountByIdentity(adapter.provider, identity.subject);
+
     // И-5: у каждой учётной записи всегда есть подтверждённая почта.
     // Нет её — ведём на экран C2, а запись НЕ заводим.
-    if (!identity.email || !identity.emailVerified) {
-      return html(200, "EmailRequired", { provider: adapter.provider });
+    if (!alreadyLinked && (!identity.email || !identity.emailVerified)) {
+      // Личность НЕ ТЕРЯЕТСЯ. Иначе, подтвердив почту, человек при
+      // следующем входе тем же провайдером снова окажется здесь.
+      await rememberPendingIdentity(consumed.interactionUid, {
+        provider: adapter.provider,
+        subject: identity.subject,
+        claimedEmail: identity.email,
+      });
+      return html(200, "EmailRequired", {
+        provider: adapter.provider,
+        // Без uid форма уходит в /interaction/undefined/email, и
+        // человек получает «Вход временно недоступен» вместо письма.
+        uid: consumed.interactionUid,
+        // Адрес, который провайдер всё-таки назвал: человеку остаётся
+        // нажать кнопку, а не набирать заново известное системе.
+        email: identity.email ?? undefined,
+      });
     }
 
-    const linked = await linkOrCreateByProvider({
-      provider: adapter.provider, subject: identity.subject, email: identity.email,
-    });
+    const linked = identity.email && identity.emailVerified
+      ? await linkOrCreateByProvider({
+          provider: adapter.provider, subject: identity.subject, email: identity.email,
+        })
+      // Связь есть, подтверждённой почты провайдер не дал: пускаем по
+      // связи. Разбор «эта личность у другого человека» (артборд C3)
+      // делается по ПОДТВЕРЖДЁННОМУ адресу и здесь неприменим.
+      : { accountId: alreadyLinked!, created: false };
     if (linked === "identity_taken") {
       await writeAudit({
         event: "provider_login", provider: adapter.provider, outcome: "fail", ip: req.ip,
@@ -240,6 +281,35 @@ export async function registerInteractionRoutes(
         return reply.code(400).type("text/html; charset=utf-8").send(
           renderScreen("LinkExpired", {}),
         );
+      }
+
+      /**
+       * Личность провайдера, ждавшая подтверждения почты, привязывается
+       * ЗДЕСЬ — владение адресом только что доказано переходом по
+       * ссылке, и требование И-5 выполнено.
+       *
+       * Занятую личность не перепривязываем: это артборд C3, и молча
+       * соединить две личности по слову провайдера нельзя. Вход при
+       * этом состоялся — человек подтвердил свою почту, — поэтому
+       * отказом отвечаем не ему, а записью в журнале.
+       */
+      if (redeemed.pendingIdentity) {
+        const attached = await attachIdentity(
+          redeemed.accountId,
+          {
+            provider: redeemed.pendingIdentity.provider as ProviderCode,
+            subject: redeemed.pendingIdentity.subject,
+            claimedEmail: redeemed.email,
+          },
+          redeemed.email,
+        );
+        await writeAudit({
+          accountId: redeemed.accountId,
+          event: "identity_attached",
+          provider: redeemed.pendingIdentity.provider as ProviderCode,
+          outcome: attached === "taken" ? "fail" : "ok",
+          ip: req.ip,
+        });
       }
 
       const device = coarsen(req.headers["user-agent"]);

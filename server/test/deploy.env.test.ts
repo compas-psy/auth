@@ -324,6 +324,35 @@ describe("осмотр сервера", () => {
     expect(script).toContain("cut -d= -f1");
   });
 
+  it("спрашивает про пределы sshd и fail2ban", () => {
+    // Д-3: рукопожатие рвётся до единой команды. Догадку («MaxStartups
+    // сбрасывает лишние подключения») нельзя оставлять догадкой —
+    // осмотр обязан её проверять, иначе долг закроют словами.
+    expect(script).toContain("maxstartups");
+    expect(script).toContain("drop connection");
+    expect(script).toContain("fail2ban-client");
+  });
+
+  it("про SSH печатает причины, но не чужие адреса", () => {
+    // В журнале sshd адресов больше, чем где-либо ещё на сервере, и
+    // почти все они чужие. Журнал прогона видит тот же круг, что и
+    // секреты, но это не повод складывать туда чужое.
+    // Обе команды, у которых адреса в выводе, обязаны идти через
+    // фильтр. Проверяется склейкой переносов: без неё «| grep» на
+    // следующей строке выглядит как отдельная команда.
+    const joined = script.replace(/\\\n\s*/g, " ");
+    for (const line of joined.split("\n")) {
+      if (line.includes("fail2ban-client status sshd")) {
+        expect({ line, filtered: line.includes("| grep") }).toEqual({ line, filtered: true });
+      }
+      if (line.includes("journalctl -u ssh")) {
+        expect({ line, filtered: line.includes("| grep -oE") }).toEqual({ line, filtered: true });
+      }
+    }
+    // Список забаненных адресов не печатается ни при каких условиях.
+    expect(script).not.toContain("Banned IP list");
+  });
+
   it("не печатает полные командные строки чужих процессов", () => {
     // В аргументах соседского процесса может оказаться то, чему не
     // место в журнале прогона.

@@ -174,6 +174,51 @@ jobs:
           check /assets/fonts/geist-latin.woff2 200
           exit $fail
 
+      # ЧЕЛОВЕК В БРАУЗЕРЕ. Всё остальное здесь и в тестах ходит либо
+      # curl'ом, либо вызовом обработчика в том же процессе. За один
+      # день ТРИ дефекта доехали до боевого сервера мимо зелёных
+      # проверок, и каждый ловился только браузером: путь cookie,
+      # заголовок Origin на POST и экран, не следующий адресу.
+      #
+      # Проверка предъявлена в обе стороны: с возвращённым умолчанием
+      # oidc-provider она краснеет ровно той фразой, которую видел
+      # учредитель, — «Вход временно недоступен».
+      - name: Человек проходит вход в браузере
+        run: |
+          npm i --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+          # Отдельный контейнер: у него свой issuer — тот адрес, по
+          # которому браузер и ходит. Метаданные на боевом домене
+          # проверяет шаг выше, и подменять их там нельзя.
+          docker run -d --name simpasid-browser --network host \
+            -e NODE_ENV=production \
+            -e DATABASE_URL=postgres://simpasid:simpasid@127.0.0.1:5433/simpasid_smoke \
+            -e ISSUER=https://127.0.0.1:8443 \
+            -e PORT=3001 -e HOST=0.0.0.0 \
+            -e SMTP_HOST=127.0.0.1 -e SMTP_PORT=1025 -e SMTP_LOCAL_RELAY=true \
+            simpasid:ci
+          for i in $(seq 1 60); do
+            curl -fsS --max-time 3 http://127.0.0.1:3001/healthz >/dev/null 2>&1 && break
+            if [ "$i" = "60" ]; then
+              echo "::error::Контейнер для браузерной проверки не поднялся."
+              docker logs simpasid-browser; exit 1
+            fi
+            sleep 2
+          done
+
+          # Портал — такой же клиент OIDC, как продукты, и без записи в
+          # реестре вход не начнётся.
+          docker exec simpasid-browser node dist/cli/clients.js add \
+            --id account-portal --name "Аккаунт СИМПАС" --product practice \
+            --redirect https://127.0.0.1:8443/account/callback --public
+
+          node .github/scripts/smoke-browser.mjs
+
+      - name: Журнал контейнера браузерной проверки
+        if: failure()
+        run: docker logs simpasid-browser | tail -60
+
       - name: Адреса в метаданных абсолютны и на нашем домене
         run: |
           # Доверяющая сторона берёт jwks_uri ИЗ метаданных. Пока мост
