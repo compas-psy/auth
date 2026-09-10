@@ -1,4 +1,4 @@
-import { Shell, Row, Switch } from "../components/Shell";
+import { Shell, Row, Switch, Panel } from "../components/Shell";
 import { security, PROVIDER_NAMES, type ProductCode } from "@wording";
 import type { Account, Identity } from "../api/client";
 
@@ -23,6 +23,7 @@ export function Security({
       <section>
         <h2>{security.methodsTitle}</h2>
 
+        <Panel>
         <Row label={security.emailRow} value={profile.email} note={security.emailNote}>
           <a className="secondary-button" href="/account/personal">{security.change}</a>
         </Row>
@@ -46,6 +47,7 @@ export function Security({
 
         {/* Отказ приходит ОТ СЕРВЕРА, а не прячется в интерфейсе:
             кнопка не может быть просто неактивной (тест Т6). */}
+        </Panel>
         {refusal && <p className="field-error" role="alert">{refusal}</p>}
 
         <button type="button" className="secondary-button" disabled>
@@ -54,8 +56,10 @@ export function Security({
       </section>
 
       <section>
-        <Switch id="notify-login" label={security.notifyNewLogin}
-          checked={notifyNewLogin ?? false} />
+        <Panel>
+          <Switch id="notify-login" label={security.notifyNewLogin}
+            checked={notifyNewLogin ?? false} />
+        </Panel>
       </section>
 
       {/* Переходное состояние: показывается, пока ЗАПИСКИ не переехали. */}

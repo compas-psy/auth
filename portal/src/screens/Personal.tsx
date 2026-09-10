@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shell } from "../components/Shell";
+import { Shell, Panel } from "../components/Shell";
 import { personal, PRODUCT_HOME, type ProductCode } from "@wording";
 import type { Account, Email } from "../api/client";
 
@@ -31,7 +31,7 @@ export function Personal({
 
       <section>
         <h2>{personal.emailLabel}</h2>
-        <ul className="email-list">
+        <Panel><ul className="email-list">
           {emails.map((e) => (
             <li key={e.id} className="row">
               <span className="row-label">{e.email}</span>
@@ -52,7 +52,7 @@ export function Personal({
               )}
             </li>
           ))}
-        </ul>
+        </ul></Panel>
         {error && <p className="field-error" role="alert">{error}</p>}
 
         <div className="add-email">

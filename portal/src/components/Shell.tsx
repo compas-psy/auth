@@ -28,7 +28,7 @@ export function Shell({
 }) {
   const home = returnTo ? PRODUCT_HOME[returnTo] : null;
   return (
-    <div className="portal">
+    <div className={atRoot ? "portal portal-root" : "portal"}>
       <header className="portal-head">
         {returnTo && home ? (
           <a className="back-link" href={`/return/${returnTo}`}>
@@ -39,11 +39,30 @@ export function Shell({
         )}
       </header>
       <main className="portal-main">
+        {/* Знак и слово — НАД заголовком: человек должен понимать, что
+            он на домене сервиса, а не в продукте (артборд J1). */}
+        {atRoot && (
+          <p className="portal-brand">
+            <img src="/assets/simpas-mark.svg" alt="" width={28} height={28} />
+            <span>СИМПАС</span>
+          </p>
+        )}
         <h1>{title}</h1>
         {children}
       </main>
     </div>
   );
+}
+
+/**
+ * Группа строк — одна карточка с разделителями.
+ *
+ * На всех артбордах кабинета строки собраны в белую карточку с рамкой,
+ * а не висят в пустоте. Отдельный элемент нужен потому, что строки
+ * лежат прямо в разделе, и обвести их одними стилями нельзя.
+ */
+export function Panel({ children }: { children: ReactNode }) {
+  return <div className="panel">{children}</div>;
 }
 
 export function Row({

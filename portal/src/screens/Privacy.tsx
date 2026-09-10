@@ -1,4 +1,4 @@
-import { Shell } from "../components/Shell";
+import { Shell, Panel } from "../components/Shell";
 import { privacy, type ProductCode } from "@wording";
 import type { AcceptedDocument } from "../api/client";
 
@@ -19,7 +19,7 @@ export function Privacy({
 
       <section>
         <h2>{privacy.acceptedTitle}</h2>
-        <ul className="document-list">
+        <Panel><ul className="document-list">
           {documents.map((d) => (
             <li key={`${d.document_code}:${d.version}`} className="row">
               <span className="row-label">
@@ -33,7 +33,7 @@ export function Privacy({
               <a className="secondary-button" href={d.url}>{privacy.viewText}</a>
             </li>
           ))}
-        </ul>
+        </ul></Panel>
       </section>
     </Shell>
   );
