@@ -72,3 +72,25 @@ describe("выход из кабинета", () => {
     expect(screen.getByText("Открыть ПРАКТИКУ").getAttribute("href")).toBe("/return/practice");
   });
 });
+
+/**
+ * Перечень продуктов в кабинете берётся из реестра имён.
+ *
+ * Он был вписан в вёрстку тремя строками — practice, zapiski, moments, —
+ * и ШАГИ в кабинете не показывались вовсе: продукт добавили миграцией и
+ * словарём, а этот список остался прежним. Отказа не было: продукта
+ * просто не существовало для человека.
+ */
+describe("перечень продуктов", () => {
+  it("показывает ВСЕ продукты экосистемы, включая ШАГИ", () => {
+    render(<Account profile={profile} products={[]} returnTo={null} />);
+    for (const name of ["ПРАКТИКА", "ЗАПИСКИ", "МОМЕНТЫ", "ШАГИ"]) {
+      expect(screen.getByText(name), `${name} нет в перечне`).toBeVisible();
+    }
+  });
+
+  it("о неподключённом продукте говорится прямо", () => {
+    render(<Account profile={profile} products={[]} returnTo={null} />);
+    expect(screen.getAllByText("не подключены")).toHaveLength(4);
+  });
+});

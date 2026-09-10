@@ -327,53 +327,133 @@ input, textarea { caret-color: var(--forest-800); }
   .primary-button { height: 46px; border-radius: 13px; }
 }
 
-/* ── Портал аккаунта (артборды J, K, L, M, N) ── */
+/* ── Портал аккаунта (артборды J, K, L, M, N) ──
+   Размеры и цвета сняты с design/СИМПАС - Аккаунт.dc.html дословно.
+   До этой правки кабинет был черновой вёрсткой, сделанной ДО получения
+   пакета макетов: колонка во всю ширину, сетка карточек без сетки,
+   строки без карточек. Ни одного решения из макета в нём не было. */
 
-.portal { max-width: 760px; margin: 0 auto; padding: 32px 20px 64px; }
-.portal-head { margin-bottom: 24px; }
-.back-link { color: var(--forest-700); text-decoration: none; font-size: 14px; }
-.back-link:hover { text-decoration: underline; }
-.portal-main h1 { text-align: left; font-size: 32px; margin-bottom: 8px; }
-.portal-main h2 {
-  font-size: 15px; font-weight: 700; margin: 32px 0 12px; color: var(--ink-900);
+/* Колонка содержимого — 720px по центру (артборд J1). */
+.portal { max-width: 720px; margin: 0 auto; padding: 28px 24px 64px; }
+.portal-head { margin-bottom: 0; }
+
+.back-link {
+  display: inline-block; margin-bottom: 36px;
+  font-size: 13px; font-weight: 600; color: var(--forest-700); text-decoration: none;
 }
-.portal-main section { margin-bottom: 8px; }
+.back-link:hover { text-decoration: underline; }
+.back-link:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
 
+/* Знак и слово СИМПАС: человек должен видеть, куда попал, — портал
+   живёт на другом домене, чем продукт (артборд J1). */
+.portal-brand {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 20px;
+}
+.portal-brand span {
+  font-size: 14px; font-weight: 800; letter-spacing: .12em; color: var(--forest-800);
+}
+
+/* Заголовок обзора крупный (36px, артборд J1), заголовки разделов —
+   24px, как на K1, L1, M1, N1. Одного размера на все экраны в макете
+   нет, и делать его одинаковым значило бы спорить с макетом. */
+.portal-main h1 {
+  text-align: left; margin: 0 0 28px;
+  font-size: 24px; line-height: 1.25; font-weight: 700; color: var(--ink-900);
+}
+.portal-root .portal-main h1 { margin: 0 0 10px; font-size: 36px; line-height: 1.15; }
+.portal-main > .subtitle {
+  text-align: left; margin: 0 0 4px;
+  font-size: 15px; line-height: 1.6; color: var(--ink-500);
+}
+.portal-main .muted {
+  margin: 0 0 32px; font-size: 15px; line-height: 1.6;
+  color: var(--ink-900); font-weight: 600;
+}
+/* Заголовок раздела — один на экран, он в оболочке. Подписи над
+   группами внутри раздела набираются мелкими прописными, как
+   «ПОДКЛЮЧЁННЫЕ ПРОДУКТЫ» на артборде J1. Два крупных заголовка подряд
+   («Безопасность» и «Способы входа») читались как ошибка вёрстки. */
+.portal-main h2 {
+  margin: 0 0 12px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--ink-400);
+}
+.confirm h2 {
+  margin: 0 0 12px; font-size: 20px; line-height: 1.25;
+  text-transform: none; letter-spacing: normal; color: var(--ink-900);
+}
+.portal-main section { margin-bottom: 40px; }
+.portal-main section:last-child { margin-bottom: 0; }
+
+/* Подпись над группой: 12px, прописные, разрядка (артборд J1). */
+.section-label {
+  margin: 0 0 12px; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--ink-400);
+}
+
+/* Разделы аккаунта — две колонки, как в макете. */
 .card-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px; margin: 24px 0 8px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 0 40px;
 }
 .nav-card {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 20px; background: var(--white);
-  border: 1px solid var(--border); border-radius: 16px;
+  display: block; padding: 20px 22px; background: var(--white);
+  border: 1px solid var(--border); border-radius: 12px;
   text-decoration: none; color: inherit;
 }
-.nav-card:hover { background: var(--fill-light); }
-.nav-card-title { font-weight: 600; }
-.nav-card-hint { color: var(--ink-500); font-size: 13px; }
-
-.row {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-  padding: 14px 0; border-bottom: 1px solid var(--border);
+.nav-card:hover { border-color: var(--forest-700); }
+.nav-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.nav-card-title {
+  display: block; margin-bottom: 6px;
+  font-size: 16px; font-weight: 700; color: var(--ink-900);
 }
-.row-main { display: flex; gap: 12px; align-items: baseline; flex: 1; }
-.row-label { font-weight: 500; }
-.row-value { color: var(--ink-500); }
-.row-note { width: 100%; margin: 4px 0 0; color: var(--ink-500); font-size: 13px; }
-.row-actions { display: flex; gap: 8px; }
+.nav-card-hint {
+  display: block; font-size: 13px; line-height: 1.5; color: var(--ink-500);
+}
+
+/* Группа строк — ОДНА карточка с разделителями, а не строки в пустоте.
+   Так на всех артбордах кабинета. */
+.panel {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+/* Разделители между строками — и когда строки лежат прямо в карточке,
+   и когда собраны в перечень. */
+.panel > *:not(ul), .panel > ul > li { border-bottom: 1px solid var(--border); }
+.panel > *:not(ul):last-child, .panel > ul > li:last-child { border-bottom: 0; }
+
+/* Строка: слева имя и подпись, справа действие, пояснение — под ними.
+   Раньше это был flex-wrap, и пояснение шириной во всю строку сталкивало
+   кнопку на следующую строчку: получалась лесенка вместо строки. */
+.row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center;
+  column-gap: 16px; padding: 16px 18px;
+}
+.row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row-label {
+  font-size: 15px; font-weight: 600; letter-spacing: .03em; color: var(--ink-900);
+}
+.row-value { font-size: 13px; color: var(--ink-400); }
+.row-note {
+  grid-column: 1 / -1; grid-row: 2; margin: 6px 0 0;
+  font-size: 12.5px; line-height: 1.6; color: var(--ink-400);
+}
+/* Действие держится справа от имени, а не уезжает под пояснение:
+   порядок в разметке — имя, пояснение, кнопка, и без явного места
+   кнопка оказывалась третьей строкой. */
+.row-actions { grid-column: 2; grid-row: 1; display: flex; gap: 8px; }
 
 .product-list, .email-list, .document-list { list-style: none; margin: 0; padding: 0; }
 
 .switch-row {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border);
+  gap: 16px; padding: 16px 18px; font-size: 15px; color: var(--ink-900);
 }
 .switch {
+  flex: none;
   width: 44px; height: 26px; border-radius: 13px; border: 1px solid var(--border);
   background: var(--fill-light); padding: 2px; cursor: pointer;
   display: flex; align-items: center;
 }
+.switch:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .switch-knob {
   width: 20px; height: 20px; border-radius: 50%; background: var(--white);
   box-shadow: 0 1px 3px rgba(20,32,24,.2); transition: transform .15s ease;
@@ -381,12 +461,41 @@ input, textarea { caret-color: var(--forest-800); }
 .switch-on { background: var(--forest-700); border-color: var(--forest-700); }
 .switch-on .switch-knob { transform: translateX(18px); }
 
-.confirm {
-  margin: 16px 0; padding: 20px; background: var(--white);
-  border: 1px solid var(--border); border-radius: 16px;
+/* Кнопка в строке: 38px, тонкая рамка, без заливки (артборды L1, M1). */
+.secondary-button {
+  height: 38px; padding: 0 16px; display: inline-flex; align-items: center;
+  background: var(--white); color: var(--forest-800);
+  border: 1px solid var(--border); border-radius: 12px;
+  font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+  text-decoration: none;
 }
-.confirm h2 { margin-top: 0; font-size: 18px; }
-.confirm .primary-button { width: auto; padding: 12px 20px; margin-right: 8px; }
+.secondary-button:hover:not(:disabled) { border-color: var(--forest-700); }
+.secondary-button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.secondary-button:disabled { color: var(--ink-400); cursor: not-allowed; }
+/* Отвязать, завершить, удалить — цветом отличается только смысл. */
+.secondary-button.danger { color: var(--danger); }
 
-.pointer-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); }
-.add-email { margin-top: 16px; display: grid; gap: 8px; }
+.confirm {
+  margin: 24px 0 0; padding: 20px 22px; background: var(--white);
+  border: 1px solid var(--border); border-radius: 12px;
+}
+.confirm h2 { margin: 0 0 12px; font-size: 20px; }
+.confirm p { margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: var(--ink-500); }
+.confirm .primary-button { width: auto; padding: 0 20px; margin-right: 8px; }
+
+.pointer-block { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); }
+.pointer-block .hint { margin: 0 0 12px; }
+.add-email { margin-top: 24px; display: grid; gap: 8px; }
+.add-email label { font-size: 13px; font-weight: 600; color: var(--ink-900); }
+
+.hint { font-size: 12.5px; line-height: 1.6; color: var(--ink-400); }
+
+/* Телефон: одна колонка, поля шире, отступы меньше. */
+@media (max-width: 560px) {
+  .portal { padding: 20px 16px 48px; }
+  .portal-main h1 { font-size: 28px; }
+  .portal-main h2 { font-size: 20px; margin-bottom: 20px; }
+  .card-grid { grid-template-columns: 1fr; gap: 12px; }
+  .row { align-items: flex-start; }
+  .row-actions { width: 100%; }
+}

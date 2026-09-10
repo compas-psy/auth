@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shell } from "../components/Shell";
+import { Shell, Panel } from "../components/Shell";
 import { devices, endOthers, type ProductCode } from "@wording";
 import type { Session } from "../api/client";
 
@@ -37,28 +37,28 @@ export function Devices({
       {current.length > 0 && (
         <section>
           <h2>{devices.thisDevice}</h2>
-          {current.map((s) => (
+          <Panel>{current.map((s) => (
             <div key={s.id} className="row">
               <span className="row-label">{describe(s)}</span>
               <span className="row-value muted">{devices.lastSeen(formatDate(s.last_seen_at))}</span>
               {/* У текущего сеанса кнопки «Завершить» нет: завершить
                   себя из этого списка — это выход, и он в другом месте. */}
             </div>
-          ))}
+          ))}</Panel>
         </section>
       )}
 
       {others.length > 0 && (
         <section>
           <h2>{devices.others}</h2>
-          {others.map((s) => (
+          <Panel>{others.map((s) => (
             <div key={s.id} className="row">
               <span className="row-label">{describe(s)}</span>
               <span className="row-value muted">{devices.lastSeen(formatDate(s.last_seen_at))}</span>
               <button type="button" className="secondary-button"
                 onClick={() => onRevoke?.(s.id)}>{devices.end}</button>
             </div>
-          ))}
+          ))}</Panel>
         </section>
       )}
 

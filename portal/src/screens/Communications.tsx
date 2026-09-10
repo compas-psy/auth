@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shell, Switch } from "../components/Shell";
+import { Shell, Switch, Panel } from "../components/Shell";
 import { communications, type ProductCode } from "@wording";
 import type { Communication } from "../api/client";
 
@@ -32,7 +32,7 @@ export function Communications({
     <Shell title={communications.title} returnTo={returnTo}>
       <section>
         <h2>{communications.marketingTitle}</h2>
-        {channels.map((c) => (
+        <Panel>{channels.map((c) => (
           <Switch
             key={c.channel}
             id={`ch-${c.channel}`}
@@ -40,7 +40,7 @@ export function Communications({
             checked={c.status === "granted"}
             onChange={(next) => onToggle?.(c.channel, next)}
           />
-        ))}
+        ))}</Panel>
         {/* Включение канала — это дача согласия, поэтому рядом стоит
             ссылка на текст, как на экране входа (задание 08 §2.4).
             Номер редакции не называется: его нет в макете, а ссылка
