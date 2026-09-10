@@ -12,12 +12,45 @@ import type { ProductCode } from "@wording";
 import { beginAuthorization, completeCallback, currentToken } from "./auth/oidc";
 
 /**
+ * Какой экран кабинета соответствует адресу.
+ *
+ * Повторяет ACCOUNT_SCREENS сервера намеренно: сервер отвечает на
+ * ПЕРВЫЙ заход, дальше человек ходит внутри страницы, и решать, что
+ * показать, приходится здесь.
+ */
+const SCREEN_BY_SECTION: Record<string, string> = {
+  "": "Account",
+  personal: "AccountPersonal",
+  security: "AccountSecurity",
+  devices: "AccountDevices",
+  communications: "AccountCommunications",
+  privacy: "AccountPrivacy",
+};
+
+export function screenForPath(pathname: string): string {
+  const section = pathname.replace(/^\/account\/?/, "").split(/[/?#]/)[0] ?? "";
+  return SCREEN_BY_SECTION[section] ?? "Account";
+}
+
+/**
  * Портал аккаунта. Ходит только в публичное API v1 — тем же, которым
  * работают продукты. Внутреннего пути не существует.
+ *
+ * ПЕРЕХОДЫ ВНУТРИ КАБИНЕТА — БЕЗ ПЕРЕЗАГРУЗКИ, и это не про скорость.
+ * Ключ доступа живёт в памяти вкладки: перезагрузка его теряет, портал
+ * молча входит заново и возвращается на /account/callback — адрес, на
+ * котором сервер отдаёт ОБЗОР. Дальше адрес переписывался на нужный, и
+ * человек видел: строка адреса говорит «Коммуникации», а на экране
+ * по-прежнему обзор. Со стороны это выглядит как «кнопки не
+ * нажимаются».
+ *
+ * Поэтому: ссылки внутри /account перехватываются, экран следует
+ * адресу, «назад» браузера работает.
  */
 export function AccountApp(
-  { screen, returnTo }: { screen: string; returnTo: ProductCode | null },
+  { screen: initialScreen, returnTo }: { screen: string; returnTo: ProductCode | null },
 ) {
+  const [screen, setScreen] = useState(initialScreen);
   const [profile, setProfile] = useState<AccountData | null>(null);
   const [emails, setEmails] = useState<Email[]>([]);
   const [identities, setIdentities] = useState<Identity[]>([]);
@@ -34,8 +67,12 @@ export function AccountApp(
         // Возврат от нашего же экрана входа: меняем код на ключ доступа.
         const params = new URLSearchParams(location.search);
         if (params.has("code") || params.has("error")) {
-          const returnTo = await completeCallback(params);
-          history.replaceState(null, "", returnTo);
+          const back = await completeCallback(params);
+          history.replaceState(null, "", back);
+          // Экран обязан следовать адресу: сервер отдал нам «обзор»,
+          // потому что мы вернулись на /account/callback, а человек шёл
+          // в раздел.
+          setScreen(screenForPath(back));
         }
         // Ключа нет — человек не вошёл. Уводим на вход, а не показываем
         // пустоту: до этой правки здесь навсегда оставался пустой div.
@@ -68,6 +105,34 @@ export function AccountApp(
       }
     })();
   }, [screen]);
+
+  /**
+   * Переходы внутри кабинета — своими силами. Внешние ссылки
+   * (/return/…, юридические документы) не трогаем: у них своя дорога.
+   * Средняя кнопка мыши, Ctrl и Cmd оставлены браузеру — человек имеет
+   * право открыть раздел в новой вкладке.
+   */
+  useEffect(() => {
+    function onClick(e: MouseEvent): void {
+      if (e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = (e.target as Element | null)?.closest?.("a");
+      const href = anchor?.getAttribute("href") ?? "";
+      if (!href.startsWith("/account")) return;
+      if (anchor?.getAttribute("target")) return;
+      e.preventDefault();
+      history.pushState(null, "", href);
+      setScreen(screenForPath(href));
+    }
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
+  }, []);
+
+  useEffect(() => {
+    const onPop = (): void => setScreen(screenForPath(location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   if (failed) {
     return (
