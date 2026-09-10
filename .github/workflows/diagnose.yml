@@ -154,6 +154,70 @@ jobs:
             done
 
             echo
+            echo "== чем клиент предъявляет себя на обмене кода =="
+            # Экран входа открывается и код выдаётся ДАЖЕ у клиента,
+            # заведённого с ключом: на авторизации клиент себя не
+            # предъявляет. Проверка подлинности происходит только на
+            # обмене кода. Поэтому «экран открылся» ничего не говорит о
+            # том, дойдёт ли человек до конца.
+            docker exec simpasid-postgres psql -U simpasid -d simpasid -At \
+              -c "SELECT client_id || ' -> ' || auth_method ||
+                         CASE WHEN client_secret IS NULL
+                              THEN ' (без ключа)' ELSE ' (с ключом)' END
+                  FROM oidc_clients WHERE disabled_at IS NULL ORDER BY client_id" \
+              2>&1 || echo "реестр не прочитан"
+
+            echo
+            echo "== что отвечает сам обмен кода =="
+            # Заведомо негодный код. Ответ различает две вещи, которые
+            # снаружи выглядят одинаково — «вход недоступен»:
+            #   invalid_grant  — клиент принят, не годится код (так и надо);
+            #   invalid_client — клиент НЕ принят без ключа, и портал,
+            #                    который ключа не имеет, не войдёт никогда.
+            curl -sS --max-time 10 -X POST https://auth.cmpas.ru/oidc/token \
+              -H 'content-type: application/x-www-form-urlencoded' \
+              --data-urlencode "grant_type=authorization_code" \
+              --data-urlencode "code=osmotr-negodnyi-kod" \
+              --data-urlencode "redirect_uri=https://auth.cmpas.ru/account/callback" \
+              --data-urlencode "client_id=account-portal" \
+              --data-urlencode "code_verifier=osmotr-proverochnyi-kod-dlinoyu-sorok-tri-znaka" \
+              | head -c 300
+            echo
+
+            echo
+            echo "== какие способы входа видит человек =="
+            # «Ключ лежит в .env» и «кнопка есть на экране» — разные
+            # вещи. Между ними: провайдер должен подключиться при старте,
+            # попасть в состав экрана и дойти до браузера. Пропуск любого
+            # звена даёт не отказ, а ТИШИНУ — кнопки просто нет.
+            #
+            # Поэтому спрашиваем сам экран. Cookie собираются из
+            # заголовков в переменную: осмотр не оставляет на сервере ни
+            # одного файла и ничего не меняет.
+            head=$(curl -sS -D - -o /dev/null --max-time 10 -G \
+              https://auth.cmpas.ru/oidc/auth \
+              --data-urlencode "client_id=account-portal" \
+              --data-urlencode "redirect_uri=https://auth.cmpas.ru/account/callback" \
+              --data "response_type=code&scope=openid+email&state=osmotr&nonce=osmotr&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256" \
+              || printf '')
+            where=$(printf '%s' "$head" | awk 'tolower($1)=="location:"{print $2}' | tr -d '\r')
+            jar=$(printf '%s' "$head" | awk 'tolower($1)=="set-cookie:"{print $2}' \
+              | tr -d '\r' | paste -sd';' -)
+            if [ -z "$where" ]; then
+              echo "ЭКРАН ВХОДА НЕ ОТКРЫЛСЯ — состав способов не спросить"
+            else
+              screen=$(curl -sS --max-time 10 -H "Cookie: $jar" \
+                "https://auth.cmpas.ru$where" || printf '')
+              ways=$(printf '%s' "$screen" | grep -o '"providers":\[[^]]*\]' | head -1)
+              case "$ways" in
+                '"providers":[]')
+                  echo "НИ ОДНОГО ПРОВАЙДЕРА: на экране только вход по почте" ;;
+                "") echo "СОСТАВ СПОСОБОВ НЕ ПРОЧИТАН — экран отдал не то, что ожидалось" ;;
+                *)  echo "$ways" ;;
+              esac
+            fi
+
+            echo
             echo "== почта: что сделали МЫ =="
             # Наши события писем адресов не содержат по построению (У-9):
             # в них только вид письма и исход.
