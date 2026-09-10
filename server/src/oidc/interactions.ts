@@ -144,7 +144,9 @@ export async function registerInteractionRoutes(
    */
   app.get<{
     Params: { provider: string };
-    Querystring: { code?: string; state?: string; error?: string };
+    // device_id присылает VK ID вместе с кодом; без него VK не
+    // проводит обмен (документация VK ID, сверено через context7).
+    Querystring: { code?: string; state?: string; error?: string; device_id?: string };
   }>("/callback/:provider", async (req, reply) => {
     const html = (code: number, screen: string, state: Record<string, unknown> = {}) =>
       reply.code(code).type("text/html; charset=utf-8")
@@ -175,7 +177,12 @@ export async function registerInteractionRoutes(
 
     let identity;
     try {
-      identity = await adapter.exchange(req.query.code);
+      identity = await adapter.exchange({
+        code: req.query.code,
+        state: req.query.state,
+        // Приходит только от VK ID; остальные адаптеры его не смотрят.
+        deviceId: req.query.device_id,
+      });
     } catch {
       await writeAudit({
         event: "provider_exchange", provider: adapter.provider,

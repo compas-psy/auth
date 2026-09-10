@@ -4,11 +4,27 @@ import { sha256 } from "../../lib/hash.js";
 import type { Provider } from "../accounts.js";
 import type { NativeIdentity } from "./native.js";
 
+/**
+ * Что приходит на адрес возврата от провайдера.
+ *
+ * Не один только код: VK ID присылает ещё device_id и требует его в
+ * обмене, а state обязателен там же. Раньше в обмен уходила голая
+ * строка кода — для VK такой вход был бы заведомо неработающим, и
+ * человек видел бы «Войти этим способом не получилось» без причины.
+ */
+export interface ProviderReturn {
+  code: string;
+  /** Тот же state, что уходил в авторизацию. VK требует его в обмене. */
+  state: string;
+  /** Идентификатор устройства. Только VK ID; у других его нет. */
+  deviceId?: string;
+}
+
 /** Провайдер, входящий через браузер (OIDC/OAuth с редиректом). */
 export interface WebProviderAdapter {
   provider: Provider;
   authorizationUrl(state: string): string;
-  exchange(code: string): Promise<NativeIdentity>;
+  exchange(params: ProviderReturn): Promise<NativeIdentity>;
 }
 
 /**
@@ -41,6 +57,10 @@ export async function connectConfiguredProviders(issuer: string): Promise<void> 
   const { yandexFromEnv } = await import("./yandex.js");
   const yandex = yandexFromEnv(issuer);
   if (yandex) registerWebProvider(yandex);
+
+  const { vkidFromEnv } = await import("./vkid.js");
+  const vkid = vkidFromEnv(issuer);
+  if (vkid) registerWebProvider(vkid);
 }
 
 const STATE_TTL_MINUTES = 15;

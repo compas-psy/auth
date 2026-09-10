@@ -33,7 +33,8 @@ export interface YandexConfig {
 export interface YandexAdapter {
   provider: "yandex";
   authorizationUrl(state: string): string;
-  exchange(code: string): Promise<NativeIdentity>;
+  /** Яндексу нужен только код; state и device_id он не спрашивает. */
+  exchange(params: { code: string }): Promise<NativeIdentity>;
 }
 
 export class YandexError extends Error {
@@ -86,7 +87,7 @@ export function createYandexAdapter(config: YandexConfig): YandexAdapter {
       return url.toString();
     },
 
-    async exchange(code: string): Promise<NativeIdentity> {
+    async exchange({ code }: { code: string }): Promise<NativeIdentity> {
       // Секрет уходит на сервер Яндекса телом POST, а не через
       // адресную строку человека.
       const tokenRes = await doFetch(YANDEX_ENDPOINTS.token, {

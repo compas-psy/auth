@@ -47,6 +47,8 @@ jobs:
           SIMPASID_DB_PASSWORD: ${{ secrets.SIMPASID_DB_PASSWORD }}
           YANDEX_CLIENT_ID: ${{ secrets.YANDEX_CLIENT_ID }}
           YANDEX_CLIENT_SECRET: ${{ secrets.YANDEX_CLIENT_SECRET }}
+          # У VK ID пары нет: обмен кода идёт без секрета приложения.
+          VKID_CLIENT_ID: ${{ secrets.VKID_CLIENT_ID }}
           # Выкладывается ровно тот коммит, который проверила сборка.
           DEPLOY_SHA: ${{ github.sha }}
         with:
@@ -60,7 +62,7 @@ jobs:
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           port: 22
           command_timeout: 30m
-          envs: SIMPASID_DB_PASSWORD,DEPLOY_SHA,YANDEX_CLIENT_ID,YANDEX_CLIENT_SECRET
+          envs: SIMPASID_DB_PASSWORD,DEPLOY_SHA,YANDEX_CLIENT_ID,YANDEX_CLIENT_SECRET,VKID_CLIENT_ID
           script: |
             set -euo pipefail
 

@@ -15,7 +15,7 @@ const SCRIPT = fileURLToPath(new URL("../../deploy/prepare-env.sh", import.meta.
 const PROBE = [
   "set -eu",
   '. "$SCRIPT"',
-  "for k in SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET MAIL_TOKEN; do",
+  "for k in SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET MAIL_TOKEN VKID_CLIENT_ID; do",
   '  eval "marker=\\${$k+set}"',
   '  if [ -n "${marker:-}" ]; then',
   '    eval "printf \'SHELL_SET %s=%s\\n\' \\"$k\\" \\"\\$$k\\""',
@@ -381,5 +381,43 @@ describe("обустройство прокси и TLS", () => {
       const before = script.slice(0, m.index);
       expect(before).toContain("nginx -t");
     }
+  });
+});
+
+/**
+ * Ключ VK ID доезжает до сервера тем же путём, что и ключи Яндекса.
+ *
+ * Путь длинный: секрет репозитория → окружение действия → envs →
+ * prepare-env.sh → .env → docker compose → контейнер. Пропуск любого
+ * звена даёт не отказ, а ТИШИНУ: провайдер просто не подключается, и
+ * кнопки VK на экране не появляется. Разбираться в этом на живом
+ * сервере дороже, чем проверить здесь.
+ */
+describe("ключ VK ID доезжает до контейнера", () => {
+  it("prepare-env.sh знает про VKID_CLIENT_ID", () => {
+    const script = readFileSync(SCRIPT, "utf8");
+    expect(script).toContain("VKID_CLIENT_ID");
+  });
+
+  it("выкладка передаёт его на сервер", () => {
+    const wf = readFileSync(
+      fileURLToPath(new URL("../../.github/workflows/deploy.yml", import.meta.url)), "utf8");
+    expect(wf).toContain("VKID_CLIENT_ID: ${{ secrets.VKID_CLIENT_ID }}");
+    // envs — перечень имён, которые действие вообще пронесёт в скрипт.
+    expect(/envs:.*VKID_CLIENT_ID/.test(wf)).toBe(true);
+  });
+
+  it("compose отдаёт его приложению", () => {
+    const compose = readFileSync(
+      fileURLToPath(new URL("../../docker-compose.yml", import.meta.url)), "utf8");
+    expect(compose).toContain("VKID_CLIENT_ID: ${VKID_CLIENT_ID:-}");
+  });
+
+  it("секрет приложения VK на сервер не едет: он там не нужен", () => {
+    // Обмен кода у VK идёт без client_secret — защита на PKCE и
+    // зарегистрированном адресе возврата. Лишний секрет на сервере —
+    // это то, что можно потерять, ничего не приобретя.
+    const script = readFileSync(SCRIPT, "utf8");
+    expect(script).not.toContain("VKID_CLIENT_SECRET");
   });
 });
