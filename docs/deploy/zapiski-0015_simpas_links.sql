@@ -17,4 +17,6 @@ CREATE TABLE simpas_links (
 );
 
 -- Обратный поиск: «кто это по нашему sub» на входе.
-CREATE INDEX simpas_links_sub_idx ON simpas_links (simpas_sub);
+-- Отдельного индекса по simpas_sub НЕТ намеренно: UNIQUE выше Postgres
+-- реализует индексом, и второй только занял бы место и замедлил запись.
+-- Он здесь был; убран по замечанию агента ЗАПИСОК (zapiski#4, 10.09.2026).
