@@ -37,8 +37,12 @@ simpasid_put() {
 
 # Все имена, которые compose читает из .env. Пустое значение НЕ
 # записывается: оно затёрло бы уже работающее.
+# VKID_CLIENT_ID без пары: обмен кода у VK идёт БЕЗ секрета приложения —
+# защита держится на PKCE и зарегистрированном адресе возврата. Секрет,
+# который негде применить, на сервере не нужен.
 for simpasid_key in \
-  SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET MAIL_ENDPOINT MAIL_TOKEN
+  SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET VKID_CLIENT_ID \
+  MAIL_ENDPOINT MAIL_TOKEN
 do
   eval "simpasid_value=\${$simpasid_key:-}"
   [ -z "$simpasid_value" ] || simpasid_put "$simpasid_key" "$simpasid_value"
