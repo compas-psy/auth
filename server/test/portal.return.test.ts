@@ -35,9 +35,9 @@ describe("возврат в продукт", () => {
   });
 
   it("продукт без известного адреса не обещает двери", async () => {
-    // ЗАПИСКИ работают полностью офлайн (И-4): веб-адреса у них нет и
-    // быть не может. Честный отказ лучше ссылки в пустоту.
-    const r = await app.inject({ url: "/return/zapiski", headers: BROWSER });
+    // У МОМЕНТОВ адреса пока нет — решение учредителя. Честный отказ
+    // лучше ссылки в пустоту.
+    const r = await app.inject({ url: "/return/moments", headers: BROWSER });
     expect(r.statusCode).toBe(404);
     expect(r.body).toContain("Такой страницы нет");
   });

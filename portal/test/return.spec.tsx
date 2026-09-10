@@ -51,10 +51,10 @@ describe("выход из кабинета", () => {
   });
 
   it("продукт без известного адреса кнопкой «Открыть» не притворяется", () => {
-    // ЗАПИСКИ работают офлайн (И-4): открывать в браузере нечего.
+    // У МОМЕНТОВ адреса пока нет — решение учредителя 10.09.2026.
     render(
       <Account profile={profile} returnTo={null}
-        products={[{ code: "zapiski", since: "2026" }]} />,
+        products={[{ code: "moments", since: "2026" }]} />,
     );
     expect(screen.queryByText("Открыть")).toBeNull();
   });

@@ -66,14 +66,19 @@ jobs:
             set -euo pipefail
             cd /var/www/auth.cmpas.ru
 
-            args="add --id $CLIENT_ID --name $CLIENT_NAME --product $PRODUCT"
-            [ -z "$REDIRECT_URI" ] || args="$args --redirect $REDIRECT_URI"
-            [ "$IS_PUBLIC" != "true" ] || args="$args --public"
-            [ "$IS_FIRST_PARTY" != "true" ] || args="$args --first-party"
+            # Название с пробелом ОБЯЗАНО дойти целиком. Раньше строка
+            # аргументов собиралась в переменную и подставлялась без
+            # кавычек: «Аккаунт СИМПАС» распадался на два слова, клиент
+            # получал имя «Аккаунт», а «СИМПАС» становился мусорным
+            # доводом. Отказа при этом не было — только неверное имя в
+            # реестре, которое потом увидит человек на экране входа.
+            set -- add --id "$CLIENT_ID" --name "$CLIENT_NAME" --product "$PRODUCT"
+            [ -z "$REDIRECT_URI" ] || set -- "$@" --redirect "$REDIRECT_URI"
+            [ "$IS_PUBLIC" != "true" ] || set -- "$@" --public
+            [ "$IS_FIRST_PARTY" != "true" ] || set -- "$@" --first-party
 
             # exec, а не run: подключаемся к уже работающему приложению
             # с его окружением. Отдельный контейнер потребовал бы
             # передавать сюда пароль базы.
-            # shellcheck disable=SC2086
             docker compose --project-name simpasid exec -T app \
-              node dist/cli/clients.js $args
+              node dist/cli/clients.js "$@"
