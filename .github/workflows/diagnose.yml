@@ -174,8 +174,14 @@ jobs:
             #   invalid_grant  — клиент принят, не годится код (так и надо);
             #   invalid_client — клиент НЕ принят без ключа, и портал,
             #                    который ключа не имеет, не войдёт никогда.
+            # Origin ОБЯЗАТЕЛЕН В ПРОБЕ. Браузер шлёт его на каждый POST,
+            # включая запрос на собственный домен, а умолчание библиотеки
+            # такие запросы отвергало — портал не мог войти НИ РАЗУ.
+            # Проба без Origin отвечала бодрым invalid_grant и ничего не
+            # замечала: ровно так я и не заметил.
             curl -sS --max-time 10 -X POST https://auth.cmpas.ru/oidc/token \
               -H 'content-type: application/x-www-form-urlencoded' \
+              -H 'origin: https://auth.cmpas.ru' \
               --data-urlencode "grant_type=authorization_code" \
               --data-urlencode "code=osmotr-negodnyi-kod" \
               --data-urlencode "redirect_uri=https://auth.cmpas.ru/account/callback" \
