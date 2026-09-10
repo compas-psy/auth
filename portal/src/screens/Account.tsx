@@ -1,5 +1,5 @@
 import { Shell } from "../components/Shell";
-import { account, PRODUCT_NAMES, type ProductCode } from "@wording";
+import { account, PRODUCT_NAMES, PRODUCT_HOME, type ProductCode } from "@wording";
 import type { Account as AccountData } from "../api/client";
 
 export interface ProductRow {
@@ -10,12 +10,12 @@ export interface ProductRow {
 /** Артборд J1 — обзор. */
 export function Account({
   profile, products, returnTo,
-}: { profile: AccountData; products: ProductRow[]; returnTo: ProductCode }) {
+}: { profile: AccountData; products: ProductRow[]; returnTo: ProductCode | null }) {
   const connected = new Map(products.map((p) => [p.code, p]));
   const all: ProductCode[] = ["practice", "zapiski", "moments"];
 
   return (
-    <Shell title={account.title} returnTo={returnTo}>
+    <Shell title={account.title} returnTo={returnTo} atRoot>
       <p className="subtitle">{account.subtitle}</p>
       <p className="muted">{profile.email}</p>
 
@@ -51,7 +51,12 @@ export function Account({
                 {row ? (
                   <>
                     <span className="row-value">{account.productSince(row.since)}</span>
-                    <a className="secondary-button" href={`/return/${code}`}>{account.open}</a>
+                    {/* Кнопка только там, где дверь есть: у ЗАПИСОК её
+                        нет по устройству продукта (офлайн, И-4), у
+                        остальных адрес пока не проверен. */}
+                    {PRODUCT_HOME[code] && (
+                      <a className="secondary-button" href={`/return/${code}`}>{account.open}</a>
+                    )}
                   </>
                 ) : (
                   <span className="row-value muted">{account.productNotConnected}</span>

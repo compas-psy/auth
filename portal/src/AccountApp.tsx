@@ -15,7 +15,9 @@ import { beginAuthorization, completeCallback, currentToken } from "./auth/oidc"
  * Портал аккаунта. Ходит только в публичное API v1 — тем же, которым
  * работают продукты. Внутреннего пути не существует.
  */
-export function AccountApp({ screen, returnTo }: { screen: string; returnTo: ProductCode }) {
+export function AccountApp(
+  { screen, returnTo }: { screen: string; returnTo: ProductCode | null },
+) {
   const [profile, setProfile] = useState<AccountData | null>(null);
   const [emails, setEmails] = useState<Email[]>([]);
   const [identities, setIdentities] = useState<Identity[]>([]);

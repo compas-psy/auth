@@ -118,6 +118,42 @@ jobs:
             fi
 
             echo
+            echo "== экран входа каждого клиента открывается =="
+            # «Клиент есть в реестре» и «клиент работает» — разные вещи.
+            # Портал аккаунта был в реестре и отвечал живому человеку
+            # invalid_client, потому что работающий процесс прочитал
+            # перечень клиентов при старте и о нём не знал. Список это
+            # не показывал никак. Поэтому спрашиваем сам сервис.
+            #
+            # Каждая проверка заводит запись взаимодействия, которая
+            # протухает сама, — это цена честного ответа.
+            #
+            # Клиенты без адреса возврата пропускаются: это первичные,
+            # они в браузер не ходят вовсе (12_NATIVE_AUTH.md).
+            printf '%s\n' "$clients" | while IFS="$(printf '\t')" read -r id product kind uris; do
+              [ -n "$id" ] || continue
+              first=$(printf '%s' "$uris" | cut -d" " -f1)
+              if [ -z "$first" ] || [ "$first" = "—" ]; then
+                echo "$id: адреса возврата нет — первичный клиент, экран входа ему не нужен"
+                continue
+              fi
+              # Ответ забирается В ПЕРЕМЕННУЮ, без временного файла:
+              # осмотр не оставляет на сервере ни одного следа и не
+              # выполняет ни одной команды, что-либо меняющей.
+              out=$(curl -s -w '\n%{http_code}' --max-time 10 -G \
+                https://auth.cmpas.ru/oidc/auth \
+                --data-urlencode "client_id=$id" \
+                --data-urlencode "redirect_uri=$first" \
+                --data "response_type=code&scope=openid+email&state=osmotr&nonce=osmotr&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256" \
+                || printf '\n000')
+              code=$(printf '%s' "$out" | tail -1)
+              case "$code" in
+                303|302) echo "$id: экран входа открывается ($code)" ;;
+                *)       echo "$id: ЭКРАН ВХОДА НЕ ОТКРЫВАЕТСЯ ($code) — $(printf '%s' "$out" | head -c 200)" ;;
+              esac
+            done
+
+            echo
             echo "== почта: что сделали МЫ =="
             # Наши события писем адресов не содержат по построению (У-9):
             # в них только вид письма и исход.

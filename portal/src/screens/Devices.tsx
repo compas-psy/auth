@@ -24,7 +24,7 @@ export function Devices({
   sessions, returnTo, onRevoke, onRevokeOthers,
 }: {
   sessions: Session[];
-  returnTo: ProductCode;
+  returnTo: ProductCode | null;
   onRevoke?: (id: string) => void;
   onRevokeOthers?: () => void;
 }) {

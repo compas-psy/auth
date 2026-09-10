@@ -5,12 +5,12 @@ import { EnterCode } from "./screens/EnterCode";
 import { EmailRequired } from "./screens/EmailRequired";
 import { SignInUnavailable, IdentityTaken } from "./screens/Errors";
 import { AccountApp } from "./AccountApp";
-import type { ProductCode, ProviderCode } from "@wording";
+import type { ServiceCode, ProductCode, ProviderCode } from "@wording";
 
 interface State {
   screen?: string;
   uid?: string;
-  service?: ProductCode;
+  service?: ServiceCode;
   providers?: ProviderCode[];
   termsVersion?: string;
   platform?: "web" | "android" | "ios";
@@ -52,8 +52,19 @@ export function App({ state }: { state: State }) {
     }
   }
 
+  /**
+   * Продукт, из которого человек пришёл, — или НИЧЕГО, если он пришёл
+   * сам. Кабинет для того и существует: посмотреть свою учётную
+   * запись, дать или отозвать согласия, поправить сведения о себе.
+   * Придумывать такому человеку продукт, «откуда он якобы пришёл», —
+   * значит врать ему в шапке каждого экрана.
+   */
+  function returnProduct(service: ServiceCode | undefined): ProductCode | null {
+    return service && service !== "account" ? service : null;
+  }
+
   if (screen.startsWith("Account")) {
-    return <AccountApp screen={screen} returnTo={state.service ?? "practice"} />;
+    return <AccountApp screen={screen} returnTo={returnProduct(state.service)} />;
   }
 
   switch (screen) {
@@ -73,7 +84,7 @@ export function App({ state }: { state: State }) {
       return <IdentityTaken />;
     case "Unavailable":
     case "LinkExpired":
-      return <SignInUnavailable service={state.service ?? "practice"} />;
+      return <SignInUnavailable service={state.service ?? "account"} />;
     default:
       return (
         <SignIn

@@ -1,4 +1,4 @@
-import { errors, type ProductCode } from "@wording";
+import { errors, type ServiceCode } from "@wording";
 
 /**
  * Артборд C4 — вход временно недоступен.
@@ -6,7 +6,7 @@ import { errors, type ProductCode } from "@wording";
  * Человеческий текст, а не техническая ошибка: ECONNREFUSED на экране
  * это отказ объяснить, что произошло.
  */
-export function SignInUnavailable({ service }: { service: ProductCode }) {
+export function SignInUnavailable({ service }: { service: ServiceCode }) {
   return (
     <div className="screen">
       <main className="card" role="alert">

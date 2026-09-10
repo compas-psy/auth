@@ -130,6 +130,7 @@ ${legalLine(version)}
 }
 
 const SERVICE_TITLES = {
+  account: signIn.title("account"),
   practice: signIn.title("practice"),
   zapiski: signIn.title("zapiski"),
   moments: signIn.title("moments"),

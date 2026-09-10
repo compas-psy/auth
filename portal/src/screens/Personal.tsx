@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Shell } from "../components/Shell";
-import { personal, type ProductCode } from "@wording";
+import { personal, PRODUCT_HOME, type ProductCode } from "@wording";
 import type { Account, Email } from "../api/client";
 
 /** Артборды K1 и K2 — личные данные и почты. */
@@ -9,7 +9,7 @@ export function Personal({
 }: {
   profile: Account;
   emails: Email[];
-  returnTo: ProductCode;
+  returnTo: ProductCode | null;
   onSaveName?: (name: string) => void;
   onAddEmail?: (email: string) => void;
   onMakePrimary?: (id: string) => void;
@@ -65,10 +65,13 @@ export function Personal({
       </section>
 
       {/* Граница: портал НЕ редактирует профиль продукта, а указывает дорогу. */}
-      <section className="pointer-block">
-        <p className="hint">{personal.professional}</p>
-        <a className="secondary-button" href="/return/practice">{personal.openPractice}</a>
-      </section>
+      {/* Указатель в ПРАКТИКУ имеет смысл, только если дверь есть. */}
+      {PRODUCT_HOME.practice && (
+        <section className="pointer-block">
+          <p className="hint">{personal.professional}</p>
+          <a className="secondary-button" href="/return/practice">{personal.openPractice}</a>
+        </section>
+      )}
     </Shell>
   );
 }

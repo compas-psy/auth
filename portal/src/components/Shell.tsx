@@ -1,22 +1,42 @@
 import type { ReactNode } from "react";
-import { account, type ProductCode } from "@wording";
+import { account, PRODUCT_HOME, type ProductCode } from "@wording";
 
 /**
- * Оболочка экранов портала.
+ * Оболочка экранов кабинета.
  *
- * Путь возврата в продукт есть на КАЖДОМ экране: человек пришёл сюда
- * из продукта и на другой домен, и обратная дорога не должна
- * восстанавливаться кнопкой «назад».
+ * Путь назад есть на КАЖДОМ экране — «портал не ловушка»
+ * (09_ACCOUNT_DESIGN_ADDENDUM.md §168). Но КУДА назад, зависит от того,
+ * как человек сюда попал:
+ *
+ *   пришёл из продукта  → «Вернуться в ПРАКТИКУ», в сам продукт;
+ *   пришёл сам          → в обзор аккаунта: продукта, из которого он
+ *                         якобы пришёл, не существует, и звать его
+ *                         «обратно» туда — выдумка про его путь;
+ *   обзор аккаунта      → назад некуда, он и есть начало.
+ *
+ * Продукт без известного адреса ссылкой не становится: обещанная и
+ * несуществующая дверь хуже отсутствующей.
  */
 export function Shell({
-  title, returnTo, children,
-}: { title: string; returnTo: ProductCode; children: ReactNode }) {
+  title, returnTo, atRoot, children,
+}: {
+  title: string;
+  returnTo?: ProductCode | null;
+  /** Обзор аккаунта: он сам и есть начало, ссылка на себя не нужна. */
+  atRoot?: boolean;
+  children: ReactNode;
+}) {
+  const home = returnTo ? PRODUCT_HOME[returnTo] : null;
   return (
     <div className="portal">
       <header className="portal-head">
-        <a className="back-link" href={`/return/${returnTo}`}>
-          ← {account.backTo(returnTo)}
-        </a>
+        {returnTo && home ? (
+          <a className="back-link" href={`/return/${returnTo}`}>
+            ← {account.backTo(returnTo)}
+          </a>
+        ) : atRoot ? null : (
+          <a className="back-link" href="/account">← {account.title}</a>
+        )}
       </header>
       <main className="portal-main">
         <h1>{title}</h1>
