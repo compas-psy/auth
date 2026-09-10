@@ -88,9 +88,19 @@ describe("портал аккаунта наскозь", () => {
     expect(code).toBeTruthy();
 
     // Публичный клиент: секрета нет и в обмене он не участвует.
+    //
+    // ORIGIN ОБЯЗАТЕЛЕН В ПРОВЕРКЕ. Браузер шлёт его на КАЖДЫЙ POST, в
+    // том числе на собственный домен. Без него проверка доказывала
+    // механизм обмена, но не то, что обмен пройдёт из браузера, — и
+    // пропустила отказ, который живой человек получал на боевом:
+    // {"error":"invalid_request","error_description":
+    //  "origin https://auth.cmpas.ru not allowed for client: account-portal"}
     const tokens = await app.inject({
       method: "POST", url: "/oidc/token",
-      headers: { ...HOST, "content-type": "application/x-www-form-urlencoded" },
+      headers: {
+        ...HOST, "content-type": "application/x-www-form-urlencoded",
+        origin: "https://auth.cmpas.ru",
+      },
       payload: new URLSearchParams({
         grant_type: "authorization_code", code: code!,
         redirect_uri: PORTAL_REDIRECT, client_id: PORTAL_CLIENT,
@@ -126,5 +136,55 @@ describe("портал аккаунта наскозь", () => {
       }).toString(),
     });
     expect(r.statusCode).toBeGreaterThanOrEqual(400);
+  });
+});
+
+/**
+ * Разрешение по Origin — ровно наш домен и ничей больше.
+ *
+ * Умолчание библиотеки отвергало всех, включая наш портал, и он не мог
+ * войти. Соблазн «разрешить всё» здесь стоил бы дорого: чужая страница
+ * получила бы возможность обменивать коды из браузера человека.
+ */
+describe("кто может обращаться к обмену из браузера", () => {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code", code: "чужой",
+    redirect_uri: PORTAL_REDIRECT, client_id: PORTAL_CLIENT,
+    code_verifier: VERIFIER,
+  }).toString();
+
+  async function exchangeFrom(origin: string | undefined) {
+    return app.inject({
+      method: "POST", url: "/oidc/token",
+      headers: {
+        ...HOST, "content-type": "application/x-www-form-urlencoded",
+        ...(origin ? { origin } : {}),
+      },
+      payload: body,
+    });
+  }
+
+  it("свой домен допущен: отказ приходит про код, а не про домен", async () => {
+    const r = await exchangeFrom("https://auth.cmpas.ru");
+    expect(r.body).not.toContain("not allowed for client");
+    expect(r.json()).toMatchObject({ error: "invalid_grant" });
+  });
+
+  it("чужой домен не допущен", async () => {
+    const r = await exchangeFrom("https://evil.test");
+    expect(r.json()).toMatchObject({ error: "invalid_request" });
+    expect(r.body).toContain("not allowed for client");
+  });
+
+  it("похожий домен не считается своим", async () => {
+    // auth.cmpas.ru.evil.test и auth.cmpas.ru — разные домены.
+    const r = await exchangeFrom("https://auth.cmpas.ru.evil.test");
+    expect(r.body).toContain("not allowed for client");
+  });
+
+  it("запрос без браузера — без Origin — проходит как прежде", async () => {
+    // Продукты меняют код на СЕРВЕРЕ: заголовка Origin у них нет.
+    const r = await exchangeFrom(undefined);
+    expect(r.body).not.toContain("not allowed for client");
   });
 });
