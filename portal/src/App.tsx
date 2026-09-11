@@ -13,6 +13,8 @@ interface State {
   service?: ServiceCode;
   providers?: ProviderCode[];
   focusProvider?: ProviderCode;
+  /** Адрес, набранный человеком в продукте (штатный login_hint). */
+  emailHint?: string;
   termsVersion?: string;
   platform?: "web" | "android" | "ios";
   provider?: ProviderCode;
@@ -95,6 +97,7 @@ export function App({ state }: { state: State }) {
           service={state.service ?? "practice"}
           providers={state.providers ?? []}
           focusProvider={state.focusProvider}
+          emailHint={state.emailHint}
           termsVersion={state.termsVersion ?? "0.9"}
           platform={state.platform ?? "web"}
           onSubmitEmail={submitEmail}

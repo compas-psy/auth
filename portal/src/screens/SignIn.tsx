@@ -13,6 +13,16 @@ export interface SignInProps {
    * подтверждённой почте доступен всегда (И-5).
    */
   focusProvider?: ProviderCode;
+  /**
+   * Адрес, который человек набрал в продукте (штатный `login_hint`).
+   * Подставляется в поле — и только: ничего не подтверждает, код или
+   * ссылка всё равно уходят в этот ящик.
+   *
+   * Держит юридическую конструкцию: без него человек набирает адрес
+   * дважды, продукт цепляется за свою форму входа, а учётная запись,
+   * заведённая мимо нашего экрана, заведена мимо акцепта Соглашения.
+   */
+  emailHint?: string;
   termsVersion: string;
   platform?: "web" | "android" | "ios" | "desktop";
   onSubmitEmail: (email: string) => void;
@@ -37,10 +47,13 @@ function looksLikeEmail(value: string): boolean {
  *   - ссылки ведут на конкретную редакцию, а не на текущую.
  */
 export function SignIn({
-  service, providers, focusProvider, termsVersion,
+  service, providers, focusProvider, termsVersion, emailHint,
   platform = "web", onSubmitEmail, onProvider,
 }: SignInProps) {
-  const [email, setEmail] = useState("");
+  /* Подсказка почты — адрес, который человек набрал в продукте. Она
+     заполняет поле и на этом кончается: стереть и набрать другой можно
+     в любой момент, а сам вход по-прежнему подтверждается письмом. */
+  const [email, setEmail] = useState(emailHint ?? "");
   const [error, setError] = useState<string | null>(null);
   /** Ожидание гасит ТОЛЬКО нажатый знак: остальные остаются живыми. */
   const [pending, setPending] = useState<ProviderCode | null>(null);

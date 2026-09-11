@@ -71,6 +71,28 @@ export async function registerInteractionRoutes(
     const focusProvider = typeof hinted === "string"
       && (providers as readonly string[]).includes(hinted) ? hinted : undefined;
 
+    /*
+     * Подсказка почты — штатный `login_hint` спецификации. Продукт
+     * передаёт адрес, который человек набрал у себя, и мы подставляем
+     * его в поле.
+     *
+     * Зачем это вообще нужно. Без подсказки человек набирает адрес
+     * дважды, и продукт цепляется за собственную форму входа — а
+     * собственная форма входа означает учётную запись, заведённую мимо
+     * нашего экрана, то есть мимо акцепта Пользовательского соглашения.
+     * Мелкое удобство здесь держит юридическую конструкцию.
+     *
+     * Подсказка НИЧЕГО НЕ ПОДТВЕРЖДАЕТ: подставленный адрес — это
+     * заполненное поле, не более. Код или ссылка всё равно уходят в
+     * этот ящик, и ответ сервиса одинаков независимо от того, есть ли
+     * такая учётная запись.
+     *
+     * Негодное значение игнорируется молча — по той же причине, что и
+     * негодная подсказка провайдера: опечатка в чужой ссылке не должна
+     * оборачиваться отказом входа.
+     */
+    const emailHint = plausibleEmail(details.params.login_hint);
+
     return reply
       .type("text/html; charset=utf-8")
       // Экран входа не кэшируется: на нём состав способов входа и
@@ -79,6 +101,7 @@ export async function registerInteractionRoutes(
       .send(renderScreen("SignIn", {
         uid: req.params.uid,
         service,
+        ...(emailHint ? { emailHint } : {}),
         // Состав способов — по ВИДУ ЭКРАНА, а не по устройству:
         // это браузер, и вход провайдером здесь идёт редиректом.
         providers,
@@ -449,4 +472,22 @@ export async function serviceOf(clientId: string | undefined): Promise<ServiceCo
   if (clientId === PORTAL_CLIENT) return "account";
   const client = await findClient(clientId);
   return client?.product ?? "practice";
+}
+
+/**
+ * Похоже ли значение на адрес почты.
+ *
+ * Проверка НАМЕРЕННО грубая: это подсказка для поля ввода, а не
+ * проверка адреса. Строгий разбор здесь отверг бы живые адреса и
+ * ничего не дал бы взамен — значение всё равно никуда не уходит, кроме
+ * атрибута `value`.
+ *
+ * Ограничение длины — не про красоту: 254 знака это предел адреса по
+ * RFC 5321, и всё, что длиннее, заведомо не адрес.
+ */
+function plausibleEmail(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length < 3 || trimmed.length > 254) return undefined;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : undefined;
 }

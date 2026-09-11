@@ -15,6 +15,32 @@ const base = {
   onSubmitEmail: vi.fn(),
 };
 
+describe("подсказка почты", () => {
+  it("названный продуктом адрес стоит в поле сразу", () => {
+    // Без подстановки человек набирает адрес дважды — у продукта и у
+    // нас, — и продукт цепляется за собственную форму входа. А своя
+    // форма входа означает учётную запись, заведённую мимо нашего
+    // экрана, то есть мимо акцепта Соглашения.
+    render(<SignIn {...base} emailHint="chelovek@cmpas.ru" />);
+    expect(screen.getByLabelText(/почт/i)).toHaveValue("chelovek@cmpas.ru");
+  });
+
+  it("без подсказки поле пустое", () => {
+    render(<SignIn {...base} />);
+    expect(screen.getByLabelText(/почт/i)).toHaveValue("");
+  });
+
+  it("подставленный адрес можно стереть и набрать свой", async () => {
+    // Подсказка — заполненное поле, а не решение за человека.
+    const user = userEvent.setup();
+    render(<SignIn {...base} emailHint="chuzhoy@cmpas.ru" />);
+    const field = screen.getByLabelText(/почт/i);
+    await user.clear(field);
+    await user.type(field, "svoy@cmpas.ru");
+    expect(field).toHaveValue("svoy@cmpas.ru");
+  });
+});
+
 describe("экран входа: юридическая конструкция", () => {
   it("на экране нет ни одного обязательного чекбокса", () => {
     render(<SignIn {...base} providers={["yandex"]} />);
