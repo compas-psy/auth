@@ -237,3 +237,57 @@ describe("§8.10 реестр документов и реестр сервис�
     expect(rows.map((r) => r.code)).toEqual([]);
   });
 });
+
+describe("продукту есть откуда узнать действующую редакцию", () => {
+  /**
+   * 14_LEGAL_PRODUCTS_UNIFIED.md §4: продукт показывает строку
+   * «Начиная работу, вы принимаете Особые условия ПРАКТИКИ, редакция
+   * 1.0» и ссылку на КОНКРЕТНУЮ редакцию.
+   *
+   * Взять номер редакции было неоткуда: `GET /v1/account/consents`
+   * отдаёт только УЖЕ принятые документы, а редакция меняется без
+   * выпуска новой сборки приложения. Продукту оставалось вписать
+   * номер руками — то есть однажды предъявить человеку не ту
+   * редакцию, которую он принимает.
+   */
+  it("перечень документов открыт без входа: это публичные документы", async () => {
+    const r = await app.inject({ url: "/v1/legal/documents" });
+    expect(r.statusCode).toBe(200);
+  });
+
+  it("называет код, редакцию, название и неизменяемый адрес", async () => {
+    const r = await app.inject({ url: "/v1/legal/documents" });
+    const body = r.json() as { documents: Array<Record<string, unknown>> };
+    const terms = body.documents.find((d) => d.document_code === "cmpas_terms");
+    expect(terms).toMatchObject({
+      document_code: "cmpas_terms",
+      title: "Пользовательское соглашение СИМПАС",
+      version: "0.9",
+      url: "/legal/terms/0.9",
+      acceptance: "action",
+    });
+  });
+
+  it("говорит, к какому сервису относятся Особые условия", async () => {
+    const r = await app.inject({ url: "/v1/legal/documents" });
+    const body = r.json() as { documents: Array<Record<string, unknown>> };
+    const practice = body.documents.find((d) => d.product === "practice");
+    expect(practice?.document_code).toBe("cmpas_practice_terms");
+  });
+
+  it("документа без опубликованной редакции в перечне нет", async () => {
+    // ШАГИ: продукт есть, Особых условий нет. Их отсутствие здесь —
+    // и есть ответ продукту «подключать нечего».
+    const r = await app.inject({ url: "/v1/legal/documents" });
+    const body = r.json() as { documents: Array<{ document_code: string }> };
+    expect(body.documents.map((d) => d.document_code)).not.toContain("cmpas_steps_terms");
+  });
+
+  it("Политика в перечне есть и помечена непринимаемой", async () => {
+    // Продукт обязан дать на неё ссылку и обязан НЕ давать её принять.
+    const r = await app.inject({ url: "/v1/legal/documents" });
+    const body = r.json() as { documents: Array<Record<string, unknown>> };
+    const privacy = body.documents.find((d) => d.document_code === "cmpas_privacy");
+    expect(privacy?.acceptance).toBe("none");
+  });
+});

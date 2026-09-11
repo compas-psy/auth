@@ -56,6 +56,34 @@ class SimpasIdClientTest {
     }
 
     @Test
+    @DisplayName("редакция документа берётся у сервера, а не вписывается в приложение")
+    fun legal_documents_are_parsed() = runTest {
+        // Номер редакции меняется без выпуска новой сборки. Вписанный в
+        // приложение однажды, он покажет человеку не ту редакцию,
+        // которую тот принимает, — и акцепт будет собран не на то.
+        json(200, """{"documents":[
+            {"document_code":"cmpas_practice_terms","title":"Особые условия ПРАКТИКИ",
+             "version":"1.0","url":"/legal/practice-terms/1.0",
+             "acceptance":"action","product":"practice"},
+            {"document_code":"cmpas_privacy","title":"Политика обработки персональных данных",
+             "version":"1.0","url":"/legal/privacy/1.0","acceptance":"none"}
+        ]}""")
+        val documents = client.legalDocuments()
+
+        val terms = documents.single { it.product == "practice" }
+        assertEquals("1.0", terms.version)
+        assertEquals("/legal/practice-terms/1.0", terms.url)
+        assertEquals("action", terms.acceptance)
+
+        // У центральных документов сервиса нет, и поле не приходит вовсе.
+        val privacy = documents.single { it.documentCode == "cmpas_privacy" }
+        assertEquals(null, privacy.product)
+        // Политику не принимают ни кнопкой, ни галкой: продукт обязан
+        // узнать это от сервера, а не помнить наизусть.
+        assertEquals("none", privacy.acceptance)
+    }
+
+    @Test
     @DisplayName("состав способов входа разбирается")
     fun auth_methods_are_parsed() = runTest {
         json(200, """{"email":true,"providers":["yandex"]}""")

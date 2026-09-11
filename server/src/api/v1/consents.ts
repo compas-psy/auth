@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import {
   marketingState, listAcceptedDocuments, recordConsent, revokeAllMarketing,
-  currentDocument, MARKETING_CHANNELS, type Channel,
+  currentDocument, currentDocuments, MARKETING_CHANNELS, type Channel,
 } from "../../services/consents.js";
 import { writeAudit } from "../../services/audit.js";
 import { requireCaller, requestContext } from "./auth-guard.js";
@@ -33,6 +33,27 @@ async function state(accountId: string): Promise<Record<string, unknown>> {
 
 export async function registerConsentRoutes(app: FastifyInstance): Promise<void> {
   const guard = requireCaller(app);
+
+  /**
+   * Действующие редакции документов. БЕЗ входа: это публичные
+   * документы, и их читают до того, как человек завёл учётную запись.
+   *
+   * Отсюда продукт берёт номер редакции и адрес для строки «Начиная
+   * работу, вы принимаете Особые условия ПРАКТИКИ, редакция 1.0».
+   */
+  app.get("/v1/legal/documents", async (_req, reply) => {
+    const documents = await currentDocuments();
+    return reply.send({
+      documents: documents.map((d) => ({
+        document_code: d.code,
+        title: d.title,
+        version: d.version,
+        url: d.url,
+        acceptance: d.acceptance,
+        ...(d.product ? { product: d.product } : {}),
+      })),
+    });
+  });
 
   app.get("/v1/account/consents", { onRequest: guard }, async (req, reply) =>
     reply.send(await state(req.caller!.accountId)));

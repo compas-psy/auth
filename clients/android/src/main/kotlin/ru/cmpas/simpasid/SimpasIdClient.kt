@@ -80,6 +80,26 @@ class SimpasIdClient(
         get("/v1/auth/methods?platform=${platform.wire}", AuthMethods.serializer())
 
     /**
+     * Действующие редакции документов Экосистемы.
+     *
+     * Отсюда берутся номер редакции и адрес для строки, под которой
+     * человек принимает Особые условия сервиса: «Начиная работу, вы
+     * принимаете Особые условия ПРАКТИКИ, редакция 1.0».
+     *
+     * Вписывать номер редакции в приложение НЕЛЬЗЯ: он меняется без
+     * выпуска новой сборки, и вписанный однажды покажет человеку не ту
+     * редакцию, которую он принимает.
+     *
+     * Документа без опубликованной редакции в ответе нет. Для сервиса
+     * это и есть ответ «подключать нечего».
+     *
+     * Входа не требует: документы публичны и читаются до того, как
+     * человек завёл учётную запись.
+     */
+    suspend fun legalDocuments(): List<LegalDocument> =
+        get("/v1/legal/documents", LegalDocumentList.serializer()).documents
+
+    /**
      * Начало входа по почте. Возвращает паузу до повтора в секундах.
      *
      * На мобильном приходит КОД из письма, а не ссылка: ссылка увела бы
@@ -228,6 +248,26 @@ class SimpasIdException(
 
 @Serializable
 data class AuthMethods(val email: Boolean, val providers: List<String> = emptyList())
+
+@Serializable
+data class LegalDocumentList(val documents: List<LegalDocument> = emptyList())
+
+@Serializable
+data class LegalDocument(
+    @SerialName("document_code") val documentCode: String,
+    val title: String,
+    val version: String,
+    /** Неизменяемый адрес ЭТОЙ редакции, относительно issuer. */
+    val url: String,
+    /**
+     * `action` — принимается действием, содержательной кнопкой;
+     * `consent` — отдельное добровольное согласие;
+     * `none` — не принимается вовсе, информационный документ.
+     */
+    val acceptance: String,
+    /** Сервис, к которому относятся Особые условия; у центральных документов — null. */
+    val product: String? = null,
+)
 
 @Serializable
 data class Account(
