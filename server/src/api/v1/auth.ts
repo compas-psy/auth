@@ -181,6 +181,9 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           event: "provider_exchange_failed",
           provider,
           stage: exchangeFailureStage(err),
+          // Имена полей проверенного подписью JWT — когда подпись
+          // сошлась, а личности в нагрузке нет. Ключи, не значения.
+          ...exchangeFailureClaims(err),
         });
         return reply.code(400).send({ error: "invalid_provider_code" });
       }
@@ -337,6 +340,14 @@ export { issueTokens };
  * это слово стало бы самым частым в журнале, и журнал перестал бы
  * отвечать на вопрос, ради которого заведён.
  */
+export function exchangeFailureClaims(err: unknown): { claims?: string } {
+  const claims = (err as { claims?: unknown } | null)?.claims;
+  // Форма проверяется здесь ещё раз: журнал — последнее место, где
+  // стоит полагаться на чужую аккуратность.
+  return typeof claims === "string" && /^[a-z0-9_,]{1,400}$/i.test(claims)
+    ? { claims } : {};
+}
+
 export function exchangeFailureStage(err: unknown): string {
   const stage = (err as { stage?: unknown } | null)?.stage;
   return typeof stage === "string" && stage ? stage : "unknown";
