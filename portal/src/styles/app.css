@@ -130,6 +130,14 @@ h1 {
 }
 .provider-disc:hover { background-color: var(--cream); border-color: #DDE3DC; }
 .provider-disc:active { transform: scale(0.97); }
+
+/* Провайдер, которого назвал продукт: человек нажал его знак у себя и
+   должен узнать его здесь сразу. Выделение мягкое — остальные способы
+   входа остаются равноправными, прятать их нельзя (И-5). */
+.provider-disc[data-focus="true"] {
+  border-color: var(--forest-700);
+  box-shadow: 0 0 0 3px rgba(40, 91, 70, .14), var(--shadow-disc);
+}
 .provider-disc:focus-visible {
   outline: none;
   box-shadow: var(--shadow-disc), var(--focus-ring);

@@ -205,6 +205,7 @@ export function createYandexNativeAdapter(config: YandexNativeConfig): NativeAda
   // Яндексу в обмене не нужен, а всё остальное совпадает буквально.
   return {
     provider: "yandex",
+    appId: config.clientId,
     async exchange({ code, codeVerifier }: NativeExchange): Promise<NativeIdentity> {
       const tokenRes = await doFetch(YANDEX_ENDPOINTS.token, {
         method: "POST",

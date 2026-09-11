@@ -227,3 +227,43 @@ export async function currentDocuments(): Promise<CurrentDocument[]> {
     product: r.product,
   }));
 }
+
+/**
+ * Акцепт Пользовательского соглашения — одной записью, один раз.
+ *
+ * Человек видит юридическую строку на экране входа и нажимает
+ * содержательную кнопку: «Получить ссылку для входа» или кнопку
+ * провайдера. Это и есть акцепт действием, и фиксируется он при
+ * СОЗДАНИИ учётной записи — раньше записать некуда, а на каждом входе
+ * журнал согласий превратился бы в журнал посещений.
+ *
+ * Редакция берётся та, которую человек ВИДЕЛ: её называет экран и
+ * приносит обратно вызывающая сторона. Расхождение с действующей
+ * означает, что между показом экрана и нажатием вышла новая редакция —
+ * записывать в этом случае нечего, потому что неизвестно, что человек
+ * читал.
+ *
+ * Вынесено из magicLink, потому что вход через провайдера не писал
+ * акцепт ВООБЩЕ: recordConsent в контуре взаимодействия не вызывался
+ * ни разу, и вошедшие через Яндекс юридически ничего не принимали.
+ */
+export async function recordTermsAcceptance(
+  accountId: string,
+  claimedVersion: string | null | undefined,
+  ctx: { source: ConsentSource; ipHash?: string; uaHash?: string; action?: string },
+): Promise<void> {
+  if (!claimedVersion) return;
+  const doc = await currentDocument("cmpas_terms");
+  if (!doc || doc.version !== claimedVersion) return;
+  await recordConsent({
+    accountId,
+    documentCode: doc.code,
+    documentVersion: doc.version,
+    contentHash: doc.contentHash,
+    status: "granted",
+    action: ctx.action ?? "signin_button",
+    source: ctx.source,
+    ipHash: ctx.ipHash,
+    uaHash: ctx.uaHash,
+  });
+}

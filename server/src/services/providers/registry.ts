@@ -77,16 +77,24 @@ export async function connectConfiguredProviders(issuer: string): Promise<void> 
 
 const STATE_TTL_MINUTES = 15;
 
-/** Выпускает одноразовый state и запоминает его хешем. */
+/**
+ * Выпускает одноразовый state и запоминает его хешем.
+ *
+ * Вместе с ним запоминается редакция соглашения, которую экран
+ * показал человеку: акцепт записывается на возврате, а экрана к тому
+ * моменту уже нет.
+ */
 export async function issueLoginState(
   provider: Provider,
   interactionUid: string,
+  termsVersion?: string | null,
 ): Promise<string> {
   const state = randomBytes(32).toString("base64url");
   await getPool().query(
-    `INSERT INTO provider_login_states (state_hash, provider, interaction_uid, expires_at)
-     VALUES ($1,$2,$3, now() + make_interval(mins => $4::int))`,
-    [sha256(state), provider, interactionUid, STATE_TTL_MINUTES],
+    `INSERT INTO provider_login_states
+       (state_hash, provider, interaction_uid, expires_at, terms_version)
+     VALUES ($1,$2,$3, now() + make_interval(mins => $4::int), $5)`,
+    [sha256(state), provider, interactionUid, STATE_TTL_MINUTES, termsVersion ?? null],
   );
   return state;
 }
@@ -99,10 +107,12 @@ export async function issueLoginState(
 export async function consumeLoginState(
   provider: string,
   state: string,
-): Promise<{ interactionUid: string } | null> {
+): Promise<{ interactionUid: string; termsVersion: string | null } | null> {
   return withTransaction(async (client) => {
-    const { rows } = await client.query<{ id: string; interaction_uid: string }>(
-      `SELECT id, interaction_uid FROM provider_login_states
+    const { rows } = await client.query<{
+      id: string; interaction_uid: string; terms_version: string | null;
+    }>(
+      `SELECT id, interaction_uid, terms_version FROM provider_login_states
        WHERE state_hash = $1 AND provider = $2
          AND used_at IS NULL AND expires_at > now()
        FOR UPDATE SKIP LOCKED`,
@@ -112,7 +122,7 @@ export async function consumeLoginState(
     if (!row) return null;
     await client.query(
       "UPDATE provider_login_states SET used_at = now() WHERE id = $1", [row.id]);
-    return { interactionUid: row.interaction_uid };
+    return { interactionUid: row.interaction_uid, termsVersion: row.terms_version };
   });
 }
 

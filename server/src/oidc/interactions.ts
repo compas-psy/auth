@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type Provider from "oidc-provider";
 import { issueMagicLink, redeemMagicLink } from "../services/magicLink.js";
 import { sendMagicLink } from "../services/mailer.js";
-import { currentDocument } from "../services/consents.js";
+import { currentDocument, recordTermsAcceptance } from "../services/consents.js";
+import { requestContext } from "../api/v1/auth-guard.js";
 import { browserProviders } from "../services/providers/native.js";
 import { writeAudit } from "../services/audit.js";
 import { coarsen } from "../lib/useragent.js";
@@ -55,6 +56,21 @@ export async function registerInteractionRoutes(
     const terms = await currentDocument("cmpas_terms");
     const service = await serviceOf(details.params.client_id as string | undefined);
 
+    /*
+     * Подсказка провайдера: продукт назвал, какой кружок нажал человек.
+     *
+     * Выделяем — и только. Экран показывается всегда, остальные способы
+     * остаются на месте: вход по подтверждённой почте доступен всегда
+     * (И-5), и подсказка не вправе его прятать.
+     *
+     * Неизвестное или неподключённое значение не выделяет никого:
+     * опечатка в чужой ссылке не должна оборачиваться отказом входа.
+     */
+    const providers = await browserProviders();
+    const hinted = details.params.provider;
+    const focusProvider = typeof hinted === "string"
+      && (providers as readonly string[]).includes(hinted) ? hinted : undefined;
+
     return reply
       .type("text/html; charset=utf-8")
       // Экран входа не кэшируется: на нём состав способов входа и
@@ -65,7 +81,8 @@ export async function registerInteractionRoutes(
         service,
         // Состав способов — по ВИДУ ЭКРАНА, а не по устройству:
         // это браузер, и вход провайдером здесь идёт редиректом.
-        providers: await browserProviders(),
+        providers,
+        ...(focusProvider ? { focusProvider } : {}),
         termsVersion: terms?.version ?? "0.9",
         /**
          * Экран взаимодействия — БРАУЗЕРНЫЙ, чем бы человек его ни
@@ -127,7 +144,12 @@ export async function registerInteractionRoutes(
    * Формы логина провайдера у нас нет и быть не может — человек уходит
    * к нему самому и возвращается уже опознанным.
    */
-  app.get<{ Params: { uid: string; provider: string } }>(
+  app.get<{
+    Params: { uid: string; provider: string };
+    // Редакцию соглашения называет ЭКРАН: акцепт записывается на
+    // возврате от провайдера, а экрана к тому моменту уже нет.
+    Querystring: { terms?: string };
+  }>(
     "/interaction/:uid/provider/:provider",
     async (req, reply) => {
       const details = await detailsFor(provider, req, reply);
@@ -137,7 +159,8 @@ export async function registerInteractionRoutes(
       // Провайдера без ключей на экране нет, и маршрут его не знает.
       if (!adapter) return reply.code(404).send({ error: "provider_unavailable" });
 
-      const state = await issueLoginState(adapter.provider, req.params.uid);
+      const state = await issueLoginState(
+        adapter.provider, req.params.uid, req.query.terms);
       await writeAudit({
         event: "provider_start", provider: adapter.provider, outcome: "ok", ip: req.ip,
       });
@@ -247,6 +270,25 @@ export async function registerInteractionRoutes(
       });
       // Артборд C3.
       return html(409, "IdentityTaken");
+    }
+
+    /*
+     * Акцепт соглашения — ТОЛЬКО при создании учётной записи.
+     *
+     * Человек прочитал юридическую строку на нашем экране и нажал
+     * кнопку провайдера: это акцепт действием, и до сегодняшнего дня
+     * он не записывался вовсе. Вход по почте его писал, вход через
+     * провайдера — нет, и вошедшие через Яндекс юридически ничего не
+     * принимали.
+     *
+     * Редакция берётся та, которую показал экран, а не действующая на
+     * момент возврата: записать надо то, что человек видел.
+     */
+    if (linked.created) {
+      const ctx = requestContext(req);
+      await recordTermsAcceptance(linked.accountId, consumed.termsVersion, {
+        source: "web", ipHash: ctx.ipHash, uaHash: ctx.uaHash,
+      });
     }
 
     const device = coarsen(req.headers["user-agent"]);
