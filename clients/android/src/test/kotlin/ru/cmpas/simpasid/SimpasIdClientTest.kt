@@ -132,6 +132,34 @@ class SimpasIdClientTest {
     }
 
     @Test
+    @DisplayName("подписанный JWT Яндекса уходит своим полем, а не вместо кода")
+    fun provider_jwt_is_sent_in_its_own_field() = runTest {
+        // Android-SDK Яндекса кода не отдаёт вовсе: результат входа —
+        // YandexAuthResult.Success(YandexAuthToken). JWT берётся методом
+        // getJwt и едет в provider_jwt. Назвать JWT кодом означало бы
+        // соврать в имени поля — и разбираться в этом через полгода.
+        json(200, """{"access_token":"a","refresh_token":"r","expires_in":900,
+                      "account":{"id":"1","email":"a@ya.ru","email_verified":true}}""")
+        client.exchangeProviderJwt("yandex", "eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjEifQ.podpis",
+            "dev-1", Platform.ANDROID)
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"provider_jwt\""), "нет provider_jwt: $body")
+        assertTrue(!body.contains("\"provider_code\""), "код не должен уезжать: $body")
+    }
+
+    @Test
+    @DisplayName("код VK уходит кодом и без JWT")
+    fun provider_code_is_sent_without_jwt() = runTest {
+        json(200, """{"access_token":"a","refresh_token":"r","expires_in":900,
+                      "account":{"id":"1","email":"a@ya.ru","email_verified":true}}""")
+        client.exchangeProviderCode("vkid", "kod", "dev-1", Platform.ANDROID,
+            codeVerifier = "v", providerDeviceId = "d", state = "s")
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body.contains("\"provider_code\""), "нет provider_code: $body")
+        assertTrue(!body.contains("\"provider_jwt\""), "JWT не должен уезжать: $body")
+    }
+
+    @Test
     @DisplayName("идентификаторы приложений провайдеров приходят с сервера")
     fun provider_app_ids_are_parsed() = runTest {
         // SDK провайдера нечем завести без идентификатора приложения.

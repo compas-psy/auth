@@ -299,6 +299,10 @@ export function createVkidNativeAdapter(config: VkidNativeConfig): NativeAdapter
     async exchange(
       { code, codeVerifier, deviceId, state, redirectUri }: NativeExchange,
     ): Promise<NativeIdentity> {
+      // Код теперь необязателен в общем договоре обмена: у Яндекса на
+      // Android его нет вовсе. У ВК есть и обязателен — проверяем здесь,
+      // где требование известно.
+      if (!code) throw new VkidError("возврат без кода", "return");
       if (!codeVerifier) throw new VkidError("возврат без проверочного кода", "return");
       if (!deviceId) throw new VkidError("возврат без device_id", "return");
       if (!state) throw new VkidError("возврат без строки состояния", "return");
