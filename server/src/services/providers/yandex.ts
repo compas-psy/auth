@@ -301,7 +301,7 @@ export async function verifyYandexJwt(
     throw new YandexError("JWT не прошёл проверку", "return");
   }
   try {
-    return profileToIdentity(payload);
+    return profileToIdentity(jwtToProfile(payload));
   } catch (err) {
     /*
      * Подпись сошлась, а личности в нагрузке нет.
@@ -323,4 +323,38 @@ export async function verifyYandexJwt(
     // то, что названо по имени, и текст туда не попадает вовсе.
     throw Object.assign(new YandexError("в JWT нет ожидаемых полей", "profile"), { claims });
   }
+}
+
+/**
+ * Нагрузка JWT — в тот же вид, что ответ справочника профиля.
+ *
+ * Настоящий JWT Яндекса называет поля иначе: состав, предъявленный
+ * боевым сервером 11.09.2026 (issue #27), — `display_name, email, exp,
+ * gender, iat, iss, jti, login, name, phone, psuid, uid`. Подпись при
+ * этом сошлась: `getJwt` подписывает секретом нашего приложения.
+ *
+ * ── Почему `uid`, а не `psuid` ──────────────────────────────────────
+ *
+ * `psuid` — псевдоним, СВОЙ для каждого приложения. Взять его значит
+ * выдать одному человеку разные личности в браузере и в приложении:
+ * браузерный вход берёт `id` из `login.yandex.ru/info`, а это тот же
+ * `uid`. Человек получил бы две учётные записи и не понял бы, куда
+ * делись его записи.
+ *
+ * Приватность псевдонима здесь проигрывает связности: один человек —
+ * одна учётная запись, это обещание сервиса, а не удобство.
+ *
+ * Прежние имена принимаются тоже: тем же разбором пользуется
+ * браузерный путь, и ломать его ради мобильного нельзя.
+ *
+ * Остальное — `display_name`, `name`, `gender`, `phone` — не переносится
+ * никуда. Телефона у нас не может быть ни в одной колонке (И-2), и
+ * лучшее место остановить его — здесь, до личности.
+ */
+function jwtToProfile(payload: Record<string, unknown>): YandexProfile {
+  return {
+    id: (payload.uid ?? payload.id) as YandexProfile["id"],
+    default_email: (payload.email ?? payload.default_email) as string | undefined,
+    emails: payload.emails as string[] | undefined,
+  };
 }
