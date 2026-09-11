@@ -106,12 +106,25 @@ export async function listProducts(accountId: string): Promise<Product[]> {
  * Идемпотентна: повторный вызов ничего не меняет. Занятый пользователь
  * продукта молча остаётся за прежним владельцем — перевешивать чужие
  * данные на другую личность эта операция не вправе.
+ *
+ * Сервис без опубликованных Особых условий не подключается вовсе
+ * (13_LEGAL_CONSENT_CENTER_AUTH.md §5.3 и §8.5): подключение сервиса,
+ * условий которого не существует, означает, что человек согласился с
+ * тем, чего нет. Отказ приходит ОТ СЕРВЕРА — то же правило, по
+ * которому сервер отказывает отвязать последний способ входа (И-5):
+ * запрет, спрятанный в интерфейсе, обходится первым же прямым
+ * запросом.
  */
 export async function linkProduct(
   accountId: string,
   product: Product,
   productUserId: string,
 ): Promise<void> {
+  const { rows } = await getPool().query<{ current_version: string | null }>(
+    "SELECT current_version FROM legal_documents WHERE product = $1", [product]);
+  if (!rows[0]?.current_version) {
+    throw new Error(`сервис ${product} не подключается: Особые условия не опубликованы`);
+  }
   await getPool().query(
     `INSERT INTO product_links (account_id, product, product_user_id)
      VALUES ($1, $2, $3)

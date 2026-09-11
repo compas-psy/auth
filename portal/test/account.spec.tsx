@@ -253,6 +253,22 @@ describe("M1 и M3 — коммуникации", () => {
 });
 
 describe("N1 — данные и приватность", () => {
+  it("реестры и Политика открываются с нашего домена, а не из продукта", () => {
+    // Д-1 из 13_LEGAL_CONSENT_CENTER_AUTH.md: центральные документы
+    // Экосистемы жили на cmpas.ru. Ссылка на домен продукта здесь —
+    // возврат к тому же дефекту, поэтому проверяется адрес, а не
+    // наличие ссылки.
+    render(<Privacy returnTo="practice" documents={[]} />);
+    const hrefs = screen.getAllByRole("link", { name: "Открыть" })
+      .map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual(["/legal/privacy", "/legal/services", "/legal/processors"]);
+  });
+
+  it("про Политику прямо сказано, что её не принимают", () => {
+    render(<Privacy returnTo="practice" documents={[]} />);
+    expect(screen.getByText(/Принимать его не нужно/)).toBeVisible();
+  });
+
   it("ссылка ведёт на ПРИНЯТУЮ редакцию, а не на текущую", () => {
     // Номер редакции с экрана убран, но человек обязан иметь
     // возможность посмотреть именно ту редакцию, которую принял, —
