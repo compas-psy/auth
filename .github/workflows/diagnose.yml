@@ -283,17 +283,26 @@ jobs:
             fi
 
             echo
-            echo "== нативный вход: отказы обмена за сутки =="
+            echo "== нативный вход: что было за сутки =="
             # Вопрос из issue #27: дошёл ли запрос до нас вообще.
-            # Есть записи — ломается обмен у нас; нет — отказ случился
-            # на устройстве, в SDK провайдера, и разбирать надо там.
+            # Есть записи — работаем мы; нет — отказ случился на
+            # устройстве, в SDK провайдера, и разбирать надо там.
+            #
+            # СОБЫТИЙ ТРИ, И ЭТО НЕ ПРИДИРКА. Первая редакция смотрела
+            # только provider_exchange и показывала одни отказы: успех
+            # пишется как login_provider_native, и увидеть удавшийся
+            # вход было нельзя в принципе. Раздел, который умеет
+            # показать только плохое, — плохой раздел.
             docker exec simpasid-postgres psql -U simpasid -d simpasid -At \
-              -c "SELECT coalesce(provider,'—') || ' ' || outcome || ': ' || count(*)
+              -c "SELECT event || ' ' || coalesce(provider,'—') || ' ' || outcome
+                         || ': ' || count(*)
                   FROM audit_log
-                  WHERE event = 'provider_exchange' AND at > now() - interval '24 hours'
-                  GROUP BY provider, outcome ORDER BY 1" \
+                  WHERE event IN ('provider_exchange','login_provider_native','provider_login')
+                    AND at > now() - interval '24 hours'
+                  GROUP BY event, provider, outcome ORDER BY 1" \
               2>&1 || echo "журнал не прочитан"
             echo "--- пусто = до сервера запрос не дошёл ни разу"
+            echo "--- login_provider_native … ok = вход прошёл насквозь"
 
             echo
             echo "== нативный вход: на какой стадии ломается =="
