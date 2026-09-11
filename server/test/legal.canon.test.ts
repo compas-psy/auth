@@ -19,6 +19,8 @@ import { ensureSchema } from "./helpers.js";
 
 let app: FastifyInstance;
 let textsDir: string;
+/** Каталог настоящих текстов возвращается следующим файлам прогона. */
+let savedTextsDir: string | undefined;
 
 /**
  * Редакция, у которой текст ПОЛОЖЕН: мерило механики публикации.
@@ -47,6 +49,7 @@ beforeAll(async () => {
      VALUES ($1, $2, '2026-09-03T00:00:00Z', 'PENDING', $3)
      ON CONFLICT (code, version) DO NOTHING`,
     [FIXTURE.code, FIXTURE.version, `/legal/fixture-terms/${FIXTURE.version}`]);
+  savedTextsDir = process.env.LEGAL_TEXTS_DIR;
   textsDir = mkdtempSync(join(tmpdir(), "simpasid-legal-"));
   mkdirSync(join(textsDir, FIXTURE.code), { recursive: true });
   writeFileSync(join(textsDir, FIXTURE.code, `${FIXTURE.version}.md`), FIXTURE.body, "utf8");
@@ -58,7 +61,8 @@ afterAll(async () => {
   await app.close();
   await closePool();
   rmSync(textsDir, { recursive: true, force: true });
-  delete process.env.LEGAL_TEXTS_DIR;
+  if (savedTextsDir === undefined) delete process.env.LEGAL_TEXTS_DIR;
+  else process.env.LEGAL_TEXTS_DIR = savedTextsDir;
 });
 
 describe("§8.1 центральный текст открывается на нашем домене", () => {
@@ -97,8 +101,12 @@ describe("§8.2 и §5.2 отпечаток", () => {
   });
 
   it("у редакции без текста отпечаток честно не подтверждён", async () => {
-    const r = await app.inject({ url: "/legal/terms/0.9" });
-    expect(r.body).toContain("не подтверждён");
+    // Документ, у которого текста нет на самом деле: согласие клиента
+    // психолога в поставке 0.9 не приезжало. Раньше здесь стояло
+    // Пользовательское соглашение — проверка держалась на том, что
+    // центральный документ не опубликован, и поставка текстов её сломала.
+    const r = await app.inject({ url: "/legal/client-consent/0.9" });
+    expect(r.body).toMatch(/не подтверждён|ещё не опубликован/i);
   });
 
   it("опубликованный отпечаток база менять не даёт", async () => {
