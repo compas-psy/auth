@@ -20,12 +20,33 @@ import { ensureSchema } from "./helpers.js";
 let app: FastifyInstance;
 let textsDir: string;
 
-/** Редакция, у которой текст ПОЛОЖЕН: мерило механики публикации. */
-const FIXTURE = { code: "cmpas_moments_terms", version: "0.9", body: "# Особые условия\n\nПробный текст.\n" };
+/**
+ * Редакция, у которой текст ПОЛОЖЕН: мерило механики публикации.
+ *
+ * Документ СВОЙ, а не настоящий. Первая редакция этой проверки брала
+ * `cmpas_moments_terms` — и публиковала под настоящим кодом пробный
+ * текст. В общей тестовой базе оставался поддельный отпечаток, а
+ * поскольку опубликованный отпечаток неизменяем (0014), настоящий
+ * текст МОМЕНТОВ потом не публиковался вовсе: защита честно видела
+ * расхождение. Поймано на живой поставке текстов 11.09.2026.
+ */
+const FIXTURE = { code: "fixture_terms", version: "9.9", body: "# Особые условия\n\nПробный текст.\n" };
 const FIXTURE_HASH = createHash("sha256").update(FIXTURE.body, "utf8").digest("hex");
 
 beforeAll(async () => {
   await ensureSchema();
+  // Свой документ заводится здесь же: реестр настоящих документов
+  // проверка не трогает.
+  await getPool().query(
+    `INSERT INTO legal_documents (code, title, acceptance, current_version)
+     VALUES ($1, 'Проба механики публикации', 'action', $2)
+     ON CONFLICT (code) DO NOTHING`, [FIXTURE.code, FIXTURE.version]);
+  await getPool().query(
+    `INSERT INTO legal_document_versions
+       (code, version, effective_at, content_hash, immutable_url)
+     VALUES ($1, $2, '2026-09-03T00:00:00Z', 'PENDING', $3)
+     ON CONFLICT (code, version) DO NOTHING`,
+    [FIXTURE.code, FIXTURE.version, `/legal/fixture-terms/${FIXTURE.version}`]);
   textsDir = mkdtempSync(join(tmpdir(), "simpasid-legal-"));
   mkdirSync(join(textsDir, FIXTURE.code), { recursive: true });
   writeFileSync(join(textsDir, FIXTURE.code, `${FIXTURE.version}.md`), FIXTURE.body, "utf8");
@@ -53,13 +74,13 @@ describe("§8.1 центральный текст открывается на н
   });
 
   it("текст выложенной редакции виден прямо на странице", async () => {
-    const r = await app.inject({ url: "/legal/moments-terms/0.9" });
+    const r = await app.inject({ url: "/legal/fixture-terms/9.9" });
     expect(r.statusCode).toBe(200);
     expect(r.body).toContain("Пробный текст.");
   });
 
   it("исходник, по которому считается отпечаток, отдаётся как есть", async () => {
-    const r = await app.inject({ url: "/legal/moments-terms/0.9.txt" });
+    const r = await app.inject({ url: "/legal/fixture-terms/9.9.txt" });
     expect(r.statusCode).toBe(200);
     expect(r.headers["content-type"]).toContain("text/plain");
     expect(r.body).toBe(FIXTURE.body);
