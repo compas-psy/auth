@@ -71,6 +71,35 @@ jobs:
               echo "::error::запрос авторизации увёл не на экран входа: $loc"; fail=1 ;;
           esac
 
+          # Тексты юридических документов отдаются теми же байтами, от
+          # которых посчитан отпечаток редакции. Проверять это изнутри
+          # бессмысленно: там и файл, и хеш берутся из одного места.
+          # Отсюда — снаружи и без ключей — сверка означает ровно то, что
+          # обещано человеку: «совпадение может проверить кто угодно».
+          #
+          # Отпечатки те же, что в описи поставки 0.9
+          # (docs/spec/16_LEGAL_TEXTS_PUBLISH.md §1). Редакция неизменяема,
+          # поэтому они не «устареют»: несовпадение значит подмену.
+          for pair in \
+            "terms/0.9 9f74a94716b97bab4b71bbd23ec15533493038f21826a151f5749e6cbbca8675" \
+            "privacy/0.9 c0cff1a73ce088c99201adecce08ed050eb07fed7958bfe9ef5c7f2ada558542" \
+            "professional/0.9 6f56f768389992f71e86159a19669aae9fa26e4d048db99d4ba8da35982ddb24" \
+            "practice-terms/0.9 c58c9005cb7a705c03784ab386408259b6cb0fd28684167af3d3185d9b311d33" \
+            "notes-terms/0.9 8648385d0bc9ca71f81161e328e5b634acb1e6682a9d1bece6087dc4f727914a" \
+            "moments-terms/0.9 0fe67b72daf92b7b3b26343bf7593864ce22d6cd3962c09eaec24468f963a999" \
+            "marketing-consent/0.9 cd8a54dfd91206461c5a445801c961427fc44e5a0f5706ff9da9bbca21868230"
+          do
+            path=${pair%% *}; want=${pair##* }
+            got=$(curl -s --max-time 20 "https://auth.cmpas.ru/legal/$path.txt" \
+              | sha256sum | cut -d" " -f1)
+            if [ "$got" = "$want" ]; then
+              echo "$path -> отпечаток совпал"
+            else
+              echo "::error::текст $path не совпал с опубликованным отпечатком"
+              fail=1
+            fi
+          done
+
           # Сосед жив. Общее у нас только железо и прокси, но проверить
           # это дешевле, чем узнать от него.
           neighbour=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
