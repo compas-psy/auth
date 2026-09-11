@@ -15,7 +15,7 @@ const SCRIPT = fileURLToPath(new URL("../../deploy/prepare-env.sh", import.meta.
 const PROBE = [
   "set -eu",
   '. "$SCRIPT"',
-  "for k in SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET MAIL_TOKEN VKID_CLIENT_ID; do",
+  "for k in SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET MAIL_TOKEN VKID_CLIENT_ID VKID_NATIVE_CLIENT_ID; do",
   '  eval "marker=\\${$k+set}"',
   '  if [ -n "${marker:-}" ]; then',
   '    eval "printf \'SHELL_SET %s=%s\\n\' \\"$k\\" \\"\\$$k\\""',
@@ -440,6 +440,30 @@ describe("ключ VK ID доезжает до контейнера", () => {
     const compose = readFileSync(
       fileURLToPath(new URL("../../docker-compose.yml", import.meta.url)), "utf8");
     expect(compose).toContain("VKID_CLIENT_ID: ${VKID_CLIENT_ID:-}");
+  });
+
+  /**
+   * У ВК приложение заводится под платформу, и у мобильного входа
+   * ПРАКТИКИ оказался свой идентификатор, отличный от веб-приложения
+   * (11.09.2026). Без отдельной переменной на сервере мобильный обмен
+   * шёл бы веб-идентификатором и получал от ВК `invalid_client`.
+   *
+   * Проверяется вся дорога до контейнера: в живом прогоне пропажа на
+   * любом её участке выглядит одинаково — кнопки ВК на мобильном
+   * экране просто нет.
+   */
+  it("свой идентификатор мобильного ВК доезжает до контейнера", () => {
+    const script = readFileSync(SCRIPT, "utf8");
+    expect(script).toContain("VKID_NATIVE_CLIENT_ID");
+
+    const wf = readFileSync(
+      fileURLToPath(new URL("../../.github/workflows/deploy.yml", import.meta.url)), "utf8");
+    expect(wf).toContain("VKID_NATIVE_CLIENT_ID: ${{ secrets.VKID_NATIVE_CLIENT_ID }}");
+    expect(/envs:.*VKID_NATIVE_CLIENT_ID/.test(wf)).toBe(true);
+
+    const compose = readFileSync(
+      fileURLToPath(new URL("../../docker-compose.yml", import.meta.url)), "utf8");
+    expect(compose).toContain("VKID_NATIVE_CLIENT_ID: ${VKID_NATIVE_CLIENT_ID:-}");
   });
 
   it("секрет приложения VK на сервер не едет: он там не нужен", () => {
