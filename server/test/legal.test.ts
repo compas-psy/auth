@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { createHash } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { buildServer } from "../src/index.js";
 import { getPool, closePool } from "../src/db/pool.js";
@@ -96,8 +97,52 @@ describe("неизменяемые адреса документов", () => {
     // content_hash = PENDING: текст в сервис ещё не опубликован.
     // Молчать об этом нельзя — доказательством согласия служит связка
     // «редакция + хеш того, что человек видел».
+    //
+    // Проверяется на документе, у которого текста НЕТ на самом деле:
+    // согласие клиента психолога в поставке 0.9 не приезжало. Раньше
+    // здесь стояло Пользовательское соглашение — и проверка молча
+    // превратилась в «центральный документ так и не опубликован».
+    const r = await app.inject({ url: "/legal/client-consent/0.9" });
+    expect(r.body).toMatch(/не подтверждён|ещё не опубликован/i);
+  });
+
+  it("Т-4 и Т-5 текст опубликованной редакции виден, а врезки о хеше нет", async () => {
     const r = await app.inject({ url: "/legal/terms/0.9" });
-    expect(r.body).toMatch(/не подтверждён|PENDING/i);
+    expect(r.body).toContain("Оператор");
+    expect(r.body).not.toMatch(/ещё не подтверждён|ещё не опубликован/i);
+  });
+
+  it("Т-3 исходник отдаётся теми же байтами, от которых посчитан отпечаток", async () => {
+    const page = await app.inject({ url: "/legal/terms/0.9" });
+    const raw = await app.inject({ url: "/legal/terms/0.9.txt" });
+    expect(raw.statusCode).toBe(200);
+    const hash = createHash("sha256").update(raw.rawPayload).digest("hex");
+    expect(page.body).toContain(hash);
+  });
+
+  it("Т-10 разметка семи текстов не просочилась в страницу", async () => {
+    // Разметчик подмножественный: конструкция, которой он не знает,
+    // осталась бы на экране сырой. Таблица в тексте — самый заметный
+    // случай: у нас её нет ни в одном документе, и появление «|» в
+    // строке значит, что документ 1.0 её принёс.
+    // Коды названы поимённо: в общей тестовой базе живут ещё и пробные
+    // документы соседних проверок, и «все опубликованные» — не то же
+    // самое, что «семь документов поставки».
+    const { rows } = await getPool().query<{ immutable_url: string }>(
+      `SELECT immutable_url FROM legal_document_versions
+        WHERE version = '0.9' AND content_hash <> 'PENDING'
+          AND code IN ('cmpas_terms','cmpas_privacy','cmpas_professional',
+                       'cmpas_practice_terms','cmpas_notes_terms',
+                       'cmpas_moments_terms','cmpas_marketing_consent')`);
+    expect(rows.length).toBe(7);
+    for (const { immutable_url } of rows) {
+      const r = await app.inject({ url: immutable_url });
+      const body = r.body.replace(/<[^>]*>/g, "");
+      for (const mark of ["**", "](", "|"]) {
+        expect(body, `${immutable_url}: в тексте видно «${mark}»`).not.toContain(mark);
+      }
+      expect(body, `${immutable_url}: заголовок остался решёткой`).not.toMatch(/^\s*#+\s/m);
+    }
   });
 
   it("страница документа кэшируется: редакция неизменяема по определению", async () => {
