@@ -134,6 +134,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       const provider = req.params.provider;
       const body = (req.body ?? {}) as {
         provider_code?: string; device_key?: string; platform?: string;
+        code_verifier?: string; provider_device_id?: string;
+        state?: string; redirect_uri?: string;
       };
       if (!body.provider_code || !body.device_key || !body.platform) {
         return reply.code(400).send({ error: "invalid_request" });
@@ -148,7 +150,16 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
       let identity;
       try {
-        identity = await adapter.exchange(body.provider_code);
+        // Что из этого обязательно — решает адаптер провайдера: VK
+        // требует все три, Яндексу хватает кода. Проверка стоит там,
+        // где известно требование, а не здесь списком на все случаи.
+        identity = await adapter.exchange({
+          code: body.provider_code,
+          codeVerifier: body.code_verifier,
+          deviceId: body.provider_device_id,
+          state: body.state,
+          redirectUri: body.redirect_uri,
+        });
       } catch {
         await writeAudit({ event: "provider_exchange", provider, outcome: "fail", ip: req.ip });
         return reply.code(400).send({ error: "invalid_provider_code" });

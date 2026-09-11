@@ -11,6 +11,31 @@ export interface NativeIdentity {
   emailVerified: boolean;
 }
 
+/**
+ * Что приложение приносит с собой после входа через SDK провайдера.
+ *
+ * Не один только код. В БРАУЗЕРНОМ входе авторизацию начинаем мы, и
+ * потому знаем и state, и проверочный код PKCE — он выводится из
+ * state ключом сервиса. В НАТИВНОМ её начинает приложение: эти
+ * значения существуют только у него, и без них обмен у провайдера не
+ * пройдёт.
+ *
+ * Секретом приложения тут ничего не является: `code_verifier` —
+ * одноразовая величина одной попытки входа, а не ключ. Ключ
+ * приложения на устройстве не появляется ни в каком виде.
+ */
+export interface NativeExchange {
+  code: string;
+  /** Проверочный код PKCE, который приложение загадало перед входом. */
+  codeVerifier?: string;
+  /** Идентификатор устройства от провайдера. Требует VK ID. */
+  deviceId?: string;
+  /** Та же строка состояния, с которой приложение начинало вход. */
+  state?: string;
+  /** Адрес возврата, который приложение назвало провайдеру. */
+  redirectUri?: string;
+}
+
 export interface NativeAdapter {
   provider: Provider;
   /**
@@ -18,7 +43,7 @@ export interface NativeAdapter {
    * Обмен идёт НА СЕРВЕРЕ провайдера: код не принимается на слово.
    * Токены провайдера после обмена не сохраняются (§2.8 п. 4).
    */
-  exchange(code: string): Promise<NativeIdentity>;
+  exchange(params: NativeExchange): Promise<NativeIdentity>;
 }
 
 /**
@@ -100,4 +125,32 @@ export async function availableProviders(platform: string): Promise<Provider[]> 
   // Порядок задаётся перечнем PROVIDERS, а не порядком подключения:
   // кнопки не должны переставляться сами по себе.
   return PROVIDERS.filter((p) => connected.has(p));
+}
+
+/**
+ * Подключает нативные SDK по ключам окружения.
+ *
+ * Ключи те же, что и у браузерного входа: приложение у провайдера
+ * одно, различается только способ, которым человек до него доходит.
+ * Отдельного «мобильного» приложения у провайдера заводить не нужно —
+ * и заводить не стоит: две регистрации означают две пары ключей и два
+ * места, где что-то протухнет.
+ *
+ * Провайдер без ключей на мобильном экране не показывается и на
+ * маршруте обмена не обслуживается — кнопка, ведущая в чужую ошибку,
+ * хуже отсутствующей кнопки.
+ */
+export async function connectNativeProviders(): Promise<void> {
+  clearNativeAdapters();
+
+  const { yandexNativeFromEnv } = await import("./yandex.js");
+  const yandex = yandexNativeFromEnv();
+  if (yandex) registerNativeAdapter(yandex);
+
+  const { vkidNativeFromEnv } = await import("./vkid.js");
+  const vkid = vkidNativeFromEnv();
+  if (vkid) registerNativeAdapter(vkid);
+
+  const { logger } = await import("../../lib/logging.js");
+  logger.info({ event: "native_sdk_connected", providers: [...adapters.keys()] });
 }

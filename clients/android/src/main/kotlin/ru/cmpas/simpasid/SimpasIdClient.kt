@@ -141,14 +141,41 @@ class SimpasIdClient(
      * Код проверяется на сервере провайдера, а не принимается на слово,
      * и его токены после обмена не сохраняются.
      */
+    /**
+     * Обмен кода внешнего сервиса на нашу пару токенов.
+     *
+     * Код приложение получает от нативного SDK провайдера. Обмен идёт
+     * НА НАШЕМ сервере: код не принимается на слово, а секрет
+     * приложения у провайдера на устройстве не появляется.
+     *
+     * Что из необязательных полей заполнять — зависит от провайдера, и
+     * приложение это знает, потому что само начинало вход:
+     *
+     *  * **VK ID** требует все три — `codeVerifier`, `providerDeviceId`
+     *    и `state`, плюс тот же `redirectUri`, который был назван SDK.
+     *    Без любого из них обмен у VK не пройдёт, и наш сервер до VK
+     *    даже не пойдёт.
+     *  * **Яндекс ID** обходится кодом; `codeVerifier` передаётся, если
+     *    приложение использовало PKCE.
+     *
+     * `codeVerifier` секретом не является: это одноразовая величина
+     * одной попытки входа.
+     */
     suspend fun exchangeProviderCode(
         provider: String,
         providerCode: String,
         deviceKey: String,
         platform: Platform,
+        codeVerifier: String? = null,
+        providerDeviceId: String? = null,
+        state: String? = null,
+        redirectUri: String? = null,
     ): TokenResponse = post(
         "/v1/auth/provider/$provider/native",
-        ProviderNativeRequest(providerCode, deviceKey, platform.wire),
+        ProviderNativeRequest(
+            providerCode, deviceKey, platform.wire,
+            codeVerifier, providerDeviceId, state, redirectUri,
+        ),
         ProviderNativeRequest.serializer(),
         TokenResponse.serializer(),
     )
@@ -320,6 +347,10 @@ private data class ProviderNativeRequest(
     @SerialName("provider_code") val providerCode: String,
     @SerialName("device_key") val deviceKey: String,
     val platform: String,
+    @SerialName("code_verifier") val codeVerifier: String? = null,
+    @SerialName("provider_device_id") val providerDeviceId: String? = null,
+    val state: String? = null,
+    @SerialName("redirect_uri") val redirectUri: String? = null,
 )
 
 @Serializable
