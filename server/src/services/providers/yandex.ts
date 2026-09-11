@@ -1,3 +1,4 @@
+import { jwtVerify } from "jose";
 import type { NativeIdentity, NativeAdapter, NativeExchange } from "./native.js";
 
 /**
@@ -38,7 +39,7 @@ export interface YandexAdapter {
 }
 
 export class YandexError extends Error {
-  constructor(message: string, readonly stage: "token" | "userinfo" | "profile") {
+  constructor(message: string, readonly stage: "return" | "token" | "userinfo" | "profile") {
     super(message);
     this.name = "YandexError";
   }
@@ -192,12 +193,40 @@ export interface YandexNativeConfig {
  * необязательный параметр). Если приложение его использовало —
  * передаём; не использовало — обмен проходит на секрете.
  *
- * **НЕ ПРОВЕРЕНО:** умеет ли Android-SDK Яндекса отдавать приложению
- * КОД, а не готовый токен. Документация, прочитанная через `context7`,
- * описывает протокол, а не SDK. Способ проверки — документация SDK
- * или ответ поддержки Яндекса; это действие человека. Если окажется,
- * что SDK отдаёт только токен, нативный вход через Яндекс придётся
- * строить иначе, и адаптер здесь заменяется целиком.
+ * ── Android отдаёт не код, а токен ─────────────────────────────────
+ *
+ * 11.09.2026 агент ПРАКТИКИ прочитал публичный API артефакта
+ * `com.yandex.android:authsdk:3.2.1`: результат входа —
+ * `YandexAuthResult.Success(YandexAuthToken)`, типа результата с кодом
+ * авторизации в SDK нет вовсе. Прежняя оговорка «не проверено» этим
+ * закрыта, и закрыта не в нашу пользу: путь через код на Android не
+ * существует.
+ *
+ * Поэтому адаптер принимает ДВА вида предъявления: код (как прежде —
+ * веб и всё, что умеет код) и подписанный Яндексом JWT
+ * (`YandexAuthSdk.getJwt`).
+ *
+ * ── Почему JWT, а не сам токен ──────────────────────────────────────
+ *
+ * Принять голый `access_token` значит принять чужой: токен, выданный
+ * ДРУГОМУ приложению Яндекса, подходит к `login.yandex.ru/info` так
+ * же, как наш — у ответа нет поля «кому выдан». Злоумышленник,
+ * заманивший человека в своё приложение, предъявил бы нам его токен и
+ * вошёл бы ЕГО учётной записью. Это подмена токена, ровно то, ради
+ * чего в OIDC появился `id_token`.
+ *
+ * JWT закрывает это подписью: Яндекс подписывает его секретным ключом
+ * ПРИЛОЖЕНИЯ (HS256), а секрет нашего приложения лежит только у нас.
+ * JWT чужого приложения подписан чужим секретом и проверку не проходит.
+ *
+ * **НЕ ПРОВЕРЕНО:** что `getJwt` отдаёт JWT, подписанный именно
+ * секретом нашего приложения, и что состав полей совпадает с ответом
+ * `login.yandex.ru/info`. Документация Яндекса
+ * (`yandex.ru/dev/id/doc/ru/tokens/jwt`) описывает подпись HS256
+ * секретным ключом приложения для `format=jwt`; про SDK там прямо не
+ * сказано, а сам адрес из среды разработки недоступен. Способ
+ * проверки — первый живой вход. Несовпадение даёт ОТКАЗ, а не тихий
+ * вход: отката на непроверенный токен здесь нет и быть не должно.
  */
 export function createYandexNativeAdapter(config: YandexNativeConfig): NativeAdapter {
   const doFetch = config.fetchImpl ?? fetch;
@@ -206,7 +235,9 @@ export function createYandexNativeAdapter(config: YandexNativeConfig): NativeAda
   return {
     provider: "yandex",
     appId: config.clientId,
-    async exchange({ code, codeVerifier }: NativeExchange): Promise<NativeIdentity> {
+    async exchange({ code, jwt, codeVerifier }: NativeExchange): Promise<NativeIdentity> {
+      if (jwt) return verifyYandexJwt(jwt, config.clientSecret);
+      if (!code) throw new YandexError("предъявлены ни код, ни JWT", "return");
       const tokenRes = await doFetch(YANDEX_ENDPOINTS.token, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -235,4 +266,39 @@ export function yandexNativeFromEnv(): NativeAdapter | null {
   const clientSecret = process.env.YANDEX_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) return null;
   return createYandexNativeAdapter({ clientId, clientSecret });
+}
+
+/**
+ * Проверка JWT Яндекса секретом нашего приложения.
+ *
+ * Алгоритм задан списком, а не взят из заголовка: доверие заголовку —
+ * классическая дыра проверяющих JWT, `alg: none` проходит её насквозь.
+ * `jose` без явного `algorithms` тоже отвергает `none`, но полагаться
+ * на умолчание библиотеки в проверке личности не стоит.
+ *
+ * Своей криптографии здесь нет: подпись считает библиотека (CLAUDE.md,
+ * «чего здесь не будет никогда»).
+ */
+export async function verifyYandexJwt(
+  jwt: string, clientSecret: string,
+): Promise<NativeIdentity> {
+  let payload: Record<string, unknown>;
+  try {
+    const verified = await jwtVerify(jwt, new TextEncoder().encode(clientSecret), {
+      algorithms: ["HS256"],
+    });
+    payload = verified.payload as Record<string, unknown>;
+  } catch (err) {
+    // Отказ проверки — отказ. Ошибка ПРОГРАММЫ — поломка, и глотать её
+    // нельзя: первая редакция этой функции забыла импорт `jwtVerify`, и
+    // сплошной `catch` выдал `ReferenceError` за «подпись не сошлась».
+    // Час на поиск причины стоил ровно этих двух строк.
+    const code = String((err as { code?: unknown }).code ?? "");
+    if (!/^ERR_(JW|JOSE)/.test(code)) throw err;
+    // Причина не пересказывается: «подпись не сошлась» и «срок вышел»
+    // снаружи должны выглядеть одинаково, иначе отказ становится
+    // подсказкой подбирающему.
+    throw new YandexError("JWT не прошёл проверку", "return");
+  }
+  return profileToIdentity(payload);
 }

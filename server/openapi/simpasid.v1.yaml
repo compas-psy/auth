@@ -1021,13 +1021,32 @@ components:
 
     ProviderNativeRequest:
       type: object
-      description: Обмен кода внешнего сервиса.
-      required: [provider_code, device_key, platform]
+      description: |
+        Обмен того, что приложение получило от внешнего сервиса, на личность.
+
+        Предъявить нужно РОВНО ОДНО из двух: `provider_code` или
+        `provider_jwt`. Что именно — определяет SDK провайдера, а не выбор
+        продукта: VK ID отдаёт код, Android-SDK Яндекса кода не отдаёт вовсе.
+      required: [device_key, platform]
       properties:
         provider_code:
           type: string
           description: Код, полученный приложением от внешнего сервиса.
           examples: ["abc"]
+        provider_jwt:
+          type: string
+          description: |
+            Подписанный провайдером JWT с личностью — для SDK, которые кода
+            не отдают. Android-SDK Яндекса из них: результат входа там
+            `YandexAuthResult.Success(YandexAuthToken)`, а JWT берётся
+            методом `getJwt`.
+
+            Подпись проверяется НАШИМ сервером секретом нашего приложения.
+            Голый ключ доступа провайдера сюда не принимается ни в каком
+            виде: ключ, выданный чужому приложению, подходит к справочнику
+            профиля так же, как наш, и принять его значит впустить чужого
+            под именем человека, которого заманили в это чужое приложение.
+          examples: ["eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjEifQ.podpis"]
         device_key:
           type: string
           description: Ключ устройства.

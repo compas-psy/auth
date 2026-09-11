@@ -133,11 +133,16 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     async (req, reply) => {
       const provider = req.params.provider;
       const body = (req.body ?? {}) as {
-        provider_code?: string; device_key?: string; platform?: string;
+        provider_code?: string; provider_jwt?: string;
+        device_key?: string; platform?: string;
         code_verifier?: string; provider_device_id?: string;
         state?: string; redirect_uri?: string;
       };
-      if (!body.provider_code || !body.device_key || !body.platform) {
+      // Ровно одно из двух. «Ни одного» — нечего обменивать; «оба» —
+      // приложение само не знает, что предъявляет, и выбирать за него
+      // мы не будем: угаданный выбор сломается молча и не сегодня.
+      const предъявлено = Number(Boolean(body.provider_code)) + Number(Boolean(body.provider_jwt));
+      if (предъявлено !== 1 || !body.device_key || !body.platform) {
         return reply.code(400).send({ error: "invalid_request" });
       }
 
@@ -155,6 +160,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         // где известно требование, а не здесь списком на все случаи.
         identity = await adapter.exchange({
           code: body.provider_code,
+          jwt: body.provider_jwt,
           codeVerifier: body.code_verifier,
           deviceId: body.provider_device_id,
           state: body.state,

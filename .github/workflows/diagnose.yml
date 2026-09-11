@@ -257,7 +257,12 @@ jobs:
             # браузерной кнопки. Второе означает, что
             # VKID_NATIVE_CLIENT_ID не доехал, и мобильный обмен у ВК
             # не пройдёт.
-            methods=$(curl -sS --max-time 10 \
+            # Заголовок ОБЯЗАТЕЛЕН: вся группа /v1/auth/* закрыта для
+            # клиентов без first_party = true, и запрос без него получает
+            # 403 forbidden_client. Первая редакция этой проверки его не
+            # слала и объявила пропажу идентификаторов — которых в ответе
+            # и не могло быть, потому что ответа не было вовсе.
+            methods=$(curl -sS --max-time 10 -H 'X-Client-Id: practice-mobile' \
               "https://auth.cmpas.ru/v1/auth/methods?platform=android" || printf '')
             case "$methods" in
               "") echo "СОСТАВ ДЛЯ МОБИЛЬНОГО НЕ ПРОЧИТАН — сервис не ответил" ;;
