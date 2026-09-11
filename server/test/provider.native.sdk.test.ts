@@ -161,3 +161,46 @@ describe("подключение нативных SDK по ключам окру
     expect(await availableProviders("android")).toEqual([]);
   });
 });
+
+describe("приложению говорят, каким идентификатором заводить SDK", () => {
+  /**
+   * Агент ПРАКТИКИ едва не завёл SDK Яндекса на СВОЙ client_id — тот,
+   * с которым работает их браузерная кнопка. Код, выданный провайдером,
+   * принадлежит запросившему приложению; обменивать мы будем нашим, и
+   * провайдер откажет. На экране это выглядит как «вход не работает»
+   * без причины.
+   *
+   * Копия наших идентификаторов в четырёх продуктах разойдётся с
+   * оригиналом, и никто не заметит, пока вход не отвалится. Поэтому
+   * идентификатор едет оттуда же, откуда состав кнопок.
+   */
+  it("рядом с провайдером назван идентификатор приложения", async () => {
+    const { nativeAppIds } = await import("../src/services/providers/native.js");
+    vi.stubEnv("YANDEX_CLIENT_ID", "яндекс-приложение");
+    vi.stubEnv("YANDEX_CLIENT_SECRET", "sec");
+    vi.stubEnv("VKID_CLIENT_ID", "53814927");
+    await connectNativeProviders();
+    expect(await nativeAppIds()).toEqual({
+      yandex: "яндекс-приложение",
+      vkid: "53814927",
+    });
+  });
+
+  it("неподключённого провайдера в перечне нет", async () => {
+    const { nativeAppIds } = await import("../src/services/providers/native.js");
+    vi.stubEnv("YANDEX_CLIENT_ID", "");
+    vi.stubEnv("YANDEX_CLIENT_SECRET", "");
+    vi.stubEnv("VKID_CLIENT_ID", "53814927");
+    await connectNativeProviders();
+    expect(await nativeAppIds()).toEqual({ vkid: "53814927" });
+  });
+
+  it("секрет приложения сюда не попадает ни при каких условиях", async () => {
+    const { nativeAppIds } = await import("../src/services/providers/native.js");
+    vi.stubEnv("YANDEX_CLIENT_ID", "cid");
+    vi.stubEnv("YANDEX_CLIENT_SECRET", "совершенно-секретно");
+    vi.stubEnv("VKID_CLIENT_ID", "");
+    await connectNativeProviders();
+    expect(JSON.stringify(await nativeAppIds())).not.toContain("совершенно-секретно");
+  });
+});

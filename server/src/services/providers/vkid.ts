@@ -295,6 +295,7 @@ export function createVkidNativeAdapter(config: VkidNativeConfig): NativeAdapter
 
   return {
     provider: "vkid",
+    appId: config.clientId,
     async exchange(
       { code, codeVerifier, deviceId, state, redirectUri }: NativeExchange,
     ): Promise<NativeIdentity> {

@@ -12,6 +12,7 @@ interface State {
   uid?: string;
   service?: ServiceCode;
   providers?: ProviderCode[];
+  focusProvider?: ProviderCode;
   termsVersion?: string;
   platform?: "web" | "android" | "ios";
   provider?: ProviderCode;
@@ -93,6 +94,7 @@ export function App({ state }: { state: State }) {
         <SignIn
           service={state.service ?? "practice"}
           providers={state.providers ?? []}
+          focusProvider={state.focusProvider}
           termsVersion={state.termsVersion ?? "0.9"}
           platform={state.platform ?? "web"}
           onSubmitEmail={submitEmail}
@@ -100,7 +102,12 @@ export function App({ state }: { state: State }) {
             // Уходим к провайдеру через свой маршрут: он выпускает
             // одноразовый state и знает, к какой попытке входа
             // возвращать. Прямая ссылка на провайдера этого не умеет.
-            window.location.assign(`/interaction/${state.uid}/provider/${provider}`);
+            // Редакция соглашения едет вместе с уходом: акцепт
+            // записывается на возврате, когда экрана уже нет, и
+            // записать надо ТО, ЧТО ЧЕЛОВЕК ВИДЕЛ на нём сейчас.
+            window.location.assign(
+              `/interaction/${state.uid}/provider/${provider}` +
+              `?terms=${encodeURIComponent(state.termsVersion ?? "")}`);
           }}
         />
       );

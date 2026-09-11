@@ -267,3 +267,45 @@ describe("юридическая строка совпадает со слова
       .toEqual(["/legal/terms/0.9", "/legal/privacy/0.9"]);
   });
 });
+
+describe("подсказка провайдера выделяет кружок, а не прячет остальные", () => {
+  /**
+   * Продукт назвал, какой кружок нажал человек на своём экране. Наш
+   * экран обязан привести его туда, куда кружок обещал, — и при этом
+   * остаться экраном входа: юридическая строка на нём, и вход по
+   * подтверждённой почте доступен всегда (И-5).
+   */
+  it("названный провайдер стоит первым", () => {
+    render(<SignIn service="practice" providers={["yandex", "vkid"]}
+      focusProvider="vkid" termsVersion="0.9" />);
+    const discs = [...document.querySelectorAll("[data-provider]")]
+      .map((b) => b.getAttribute("data-provider"));
+    expect(discs).toEqual(["vkid", "yandex"]);
+  });
+
+  it("названный провайдер помечен, остальные — нет", () => {
+    render(<SignIn service="practice" providers={["yandex", "vkid"]}
+      focusProvider="vkid" termsVersion="0.9" />);
+    expect(document.querySelector('[data-provider="vkid"]')).toHaveAttribute("data-focus", "true");
+    expect(document.querySelector('[data-provider="yandex"]')).not.toHaveAttribute("data-focus");
+  });
+
+  it("вход по почте остаётся на экране", () => {
+    render(<SignIn service="practice" providers={["yandex", "vkid"]}
+      focusProvider="vkid" termsVersion="0.9" />);
+    expect(screen.getByLabelText(/почт/i)).toBeVisible();
+  });
+
+  it("юридическая строка на месте", () => {
+    render(<SignIn service="practice" providers={["yandex", "vkid"]}
+      focusProvider="vkid" termsVersion="0.9" />);
+    expect(screen.getByTestId("legal-line")).toBeVisible();
+  });
+
+  it("без подсказки порядок прежний", () => {
+    render(<SignIn service="practice" providers={["yandex", "vkid"]} termsVersion="0.9" />);
+    const discs = [...document.querySelectorAll("[data-provider]")]
+      .map((b) => b.getAttribute("data-provider"));
+    expect(discs).toEqual(["yandex", "vkid"]);
+  });
+});

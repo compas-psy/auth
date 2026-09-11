@@ -268,10 +268,21 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     const platform = String(
       (req.query as Record<string, unknown> | undefined)?.platform ?? "web",
     );
-    const { availableProviders } = await import("../../services/providers/native.js");
+    const { availableProviders, nativeAppIds, isMobilePlatform } =
+      await import("../../services/providers/native.js");
+    const providers = await availableProviders(platform);
+    // Идентификаторы приложений нужны только тому, кто сам поднимает
+    // SDK провайдера. В браузере уход к провайдеру делаем мы, и
+    // называть их там незачем.
+    if (!isMobilePlatform(platform)) {
+      return reply.send({ email: true, providers });
+    }
+    const appIds = await nativeAppIds();
     return reply.send({
       email: true,
-      providers: await availableProviders(platform),
+      providers,
+      provider_app_ids: Object.fromEntries(
+        providers.filter((p) => appIds[p]).map((p) => [p, appIds[p]!])),
     });
   });
 }

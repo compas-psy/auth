@@ -39,6 +39,18 @@ export interface NativeExchange {
 export interface NativeAdapter {
   provider: Provider;
   /**
+   * Идентификатор НАШЕГО приложения у провайдера.
+   *
+   * Им приложение обязано инициализировать SDK: код, выданный
+   * провайдером, принадлежит запросившему приложению, а обмен идёт
+   * нашими ключами. Заведи SDK на чужой идентификатор — провайдер
+   * откажет, и человек увидит «вход не работает» без причины.
+   *
+   * Секретом не является: `client_id` едет в строке запроса каждого
+   * обращения к провайдеру и виден всякому, кто открыл экран входа.
+   */
+  appId: string;
+  /**
    * Меняет код, полученный приложением от SDK провайдера, на личность.
    * Обмен идёт НА СЕРВЕРЕ провайдера: код не принимается на слово.
    * Токены провайдера после обмена не сохраняются (§2.8 п. 4).
@@ -81,6 +93,20 @@ export function nativeAdapterFor(provider: string): NativeAdapter | undefined {
 
 export function hasNativeSdk(provider: string): boolean {
   return adapters.has(provider as Provider);
+}
+
+/**
+ * Идентификаторы приложений для подключённых нативных SDK.
+ *
+ * Отдаются приложению рядом с составом кнопок — оттуда же, откуда оно
+ * берёт перечень провайдеров. Копия этих значений, вписанная в четыре
+ * продукта руками, через полгода разойдётся с оригиналом, и никто не
+ * заметит, пока вход не отвалится.
+ */
+export async function nativeAppIds(): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const [provider, adapter] of adapters) out[provider] = adapter.appId;
+  return out;
 }
 
 export function isMobilePlatform(platform: string): boolean {

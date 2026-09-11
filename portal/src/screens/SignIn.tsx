@@ -6,6 +6,13 @@ export interface SignInProps {
   /** Состав приходит с сервера (GET /v1/auth/methods), а не из сборки:
    *  приложение не должно показывать кнопку в пустоту. */
   providers: readonly ProviderCode[];
+  /**
+   * Провайдер, которого назвал продукт: человек нажал у себя кружок с
+   * его знаком. Мы его ВЫДЕЛЯЕМ и ставим первым — но экран
+   * показываем целиком: юридическая строка на нём, и вход по
+   * подтверждённой почте доступен всегда (И-5).
+   */
+  focusProvider?: ProviderCode;
   termsVersion: string;
   platform?: "web" | "android" | "ios" | "desktop";
   onSubmitEmail: (email: string) => void;
@@ -30,13 +37,19 @@ function looksLikeEmail(value: string): boolean {
  *   - ссылки ведут на конкретную редакцию, а не на текущую.
  */
 export function SignIn({
-  service, providers, termsVersion, platform = "web", onSubmitEmail, onProvider,
+  service, providers, focusProvider, termsVersion,
+  platform = "web", onSubmitEmail, onProvider,
 }: SignInProps) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   /** Ожидание гасит ТОЛЬКО нажатый знак: остальные остаются живыми. */
   const [pending, setPending] = useState<ProviderCode | null>(null);
   const isMobile = platform === "android" || platform === "ios";
+  /* Названный продуктом провайдер встаёт первым: человек нажал его
+     знак у себя и должен увидеть его знак здесь, а не искать в ряду. */
+  const ordered = focusProvider && providers.includes(focusProvider)
+    ? [focusProvider, ...providers.filter((p) => p !== focusProvider)]
+    : providers;
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -68,12 +81,14 @@ export function SignIn({
                   место под знак было пустым квадратом: знаки всё это
                   время лежали в design/assets. */}
               <div className="providers">
-                {providers.map((p) => (
+                {ordered.map((p) => (
                   <span key={p} className="provider">
                     <button
                       type="button"
                       data-provider={p}
                       className="provider-disc"
+                      data-focus={p === focusProvider ? "true" : undefined}
+                      autoFocus={p === focusProvider || undefined}
                       aria-label={signIn.providerButton(p)}
                       aria-busy={pending === p ? true : undefined}
                       onClick={() => { setPending(p); onProvider?.(p); }}
