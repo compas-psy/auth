@@ -283,6 +283,28 @@ jobs:
             fi
 
             echo
+            echo "== нативный вход: отказы обмена за сутки =="
+            # Вопрос из issue #27: дошёл ли запрос до нас вообще.
+            # Есть записи — ломается обмен у нас; нет — отказ случился
+            # на устройстве, в SDK провайдера, и разбирать надо там.
+            docker exec simpasid-postgres psql -U simpasid -d simpasid -At \
+              -c "SELECT coalesce(provider,'—') || ' ' || outcome || ': ' || count(*)
+                  FROM audit_log
+                  WHERE event = 'provider_exchange' AND at > now() - interval '24 hours'
+                  GROUP BY provider, outcome ORDER BY 1" \
+              2>&1 || echo "журнал не прочитан"
+            echo "--- пусто = до сервера запрос не дошёл ни разу"
+
+            echo
+            echo "== нативный вход: на какой стадии ломается =="
+            # Стадия пишется в лог с 12.09.2026 (issue #27): снаружи
+            # «подпись не сошлась», «профиль недоступен» и «в профиле
+            # нет идентификатора» — один и тот же invalid_provider_code.
+            docker logs simpasid-app --since 24h 2>&1 \
+              | grep -o '"event":"provider_exchange_failed"[^}]*' | tail -20 \
+              || echo "ОТКАЗОВ ОБМЕНА ЗА СУТКИ НЕ БЫЛО"
+
+            echo
             echo "== почта: что сделали МЫ =="
             # Наши события писем адресов не содержат по построению (У-9):
             # в них только вид письма и исход.
