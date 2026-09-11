@@ -56,6 +56,73 @@ class SimpasIdClientTest {
     }
 
     @Test
+    @DisplayName("обмен кода VK несёт всё, что VK требует")
+    fun vk_exchange_carries_pkce_and_device() = runTest {
+        // VK ID проводит обмен только при полном наборе: проверочный
+        // код PKCE, идентификатор устройства и строка состояния. Все
+        // три знает ПРИЛОЖЕНИЕ — авторизацию начинало оно.
+        json(200, """{"access_token":"a","refresh_token":"r","expires_in":900,
+                      "account":{"id":"1","email":"a@ya.ru","email_verified":true}}""")
+        client.exchangeProviderCode(
+            provider = "vkid",
+            providerCode = "c-1",
+            deviceKey = "dev-1",
+            platform = Platform.ANDROID,
+            codeVerifier = "v".repeat(43),
+            providerDeviceId = "vk-dev",
+            state = "s".repeat(43),
+            redirectUri = "vk53814927://vk.com/blank.html",
+        )
+        val body = server.takeRequest().body.readUtf8()
+        for (field in listOf("code_verifier", "provider_device_id", "state", "redirect_uri")) {
+            assertTrue(body.contains(field), "в теле нет $field: $body")
+        }
+    }
+
+    @Test
+    @DisplayName("обмен кода Яндекса не тащит пустых полей")
+    fun yandex_exchange_omits_absent_fields() = runTest {
+        // Яндексу хватает кода. Пустые поля в теле — это ложное
+        // обещание, что приложение что-то знает и передало.
+        json(200, """{"access_token":"a","refresh_token":"r","expires_in":900,
+                      "account":{"id":"1","email":"a@ya.ru","email_verified":true}}""")
+        client.exchangeProviderCode(
+            provider = "yandex", providerCode = "c-1",
+            deviceKey = "dev-1", platform = Platform.ANDROID,
+        )
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(!body.contains("provider_device_id"), "лишнее поле в теле: $body")
+    }
+
+    @Test
+    @DisplayName("редакция документа берётся у сервера, а не вписывается в приложение")
+    fun legal_documents_are_parsed() = runTest {
+        // Номер редакции меняется без выпуска новой сборки. Вписанный в
+        // приложение однажды, он покажет человеку не ту редакцию,
+        // которую тот принимает, — и акцепт будет собран не на то.
+        json(200, """{"documents":[
+            {"document_code":"cmpas_practice_terms","title":"Особые условия ПРАКТИКИ",
+             "version":"1.0","url":"/legal/practice-terms/1.0",
+             "acceptance":"action","product":"practice"},
+            {"document_code":"cmpas_privacy","title":"Политика обработки персональных данных",
+             "version":"1.0","url":"/legal/privacy/1.0","acceptance":"none"}
+        ]}""")
+        val documents = client.legalDocuments()
+
+        val terms = documents.single { it.product == "practice" }
+        assertEquals("1.0", terms.version)
+        assertEquals("/legal/practice-terms/1.0", terms.url)
+        assertEquals("action", terms.acceptance)
+
+        // У центральных документов сервиса нет, и поле не приходит вовсе.
+        val privacy = documents.single { it.documentCode == "cmpas_privacy" }
+        assertEquals(null, privacy.product)
+        // Политику не принимают ни кнопкой, ни галкой: продукт обязан
+        // узнать это от сервера, а не помнить наизусть.
+        assertEquals("none", privacy.acceptance)
+    }
+
+    @Test
     @DisplayName("состав способов входа разбирается")
     fun auth_methods_are_parsed() = runTest {
         json(200, """{"email":true,"providers":["yandex"]}""")

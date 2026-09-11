@@ -80,6 +80,26 @@ class SimpasIdClient(
         get("/v1/auth/methods?platform=${platform.wire}", AuthMethods.serializer())
 
     /**
+     * Действующие редакции документов Экосистемы.
+     *
+     * Отсюда берутся номер редакции и адрес для строки, под которой
+     * человек принимает Особые условия сервиса: «Начиная работу, вы
+     * принимаете Особые условия ПРАКТИКИ, редакция 1.0».
+     *
+     * Вписывать номер редакции в приложение НЕЛЬЗЯ: он меняется без
+     * выпуска новой сборки, и вписанный однажды покажет человеку не ту
+     * редакцию, которую он принимает.
+     *
+     * Документа без опубликованной редакции в ответе нет. Для сервиса
+     * это и есть ответ «подключать нечего».
+     *
+     * Входа не требует: документы публичны и читаются до того, как
+     * человек завёл учётную запись.
+     */
+    suspend fun legalDocuments(): List<LegalDocument> =
+        get("/v1/legal/documents", LegalDocumentList.serializer()).documents
+
+    /**
      * Начало входа по почте. Возвращает паузу до повтора в секундах.
      *
      * На мобильном приходит КОД из письма, а не ссылка: ссылка увела бы
@@ -121,14 +141,41 @@ class SimpasIdClient(
      * Код проверяется на сервере провайдера, а не принимается на слово,
      * и его токены после обмена не сохраняются.
      */
+    /**
+     * Обмен кода внешнего сервиса на нашу пару токенов.
+     *
+     * Код приложение получает от нативного SDK провайдера. Обмен идёт
+     * НА НАШЕМ сервере: код не принимается на слово, а секрет
+     * приложения у провайдера на устройстве не появляется.
+     *
+     * Что из необязательных полей заполнять — зависит от провайдера, и
+     * приложение это знает, потому что само начинало вход:
+     *
+     *  * **VK ID** требует все три — `codeVerifier`, `providerDeviceId`
+     *    и `state`, плюс тот же `redirectUri`, который был назван SDK.
+     *    Без любого из них обмен у VK не пройдёт, и наш сервер до VK
+     *    даже не пойдёт.
+     *  * **Яндекс ID** обходится кодом; `codeVerifier` передаётся, если
+     *    приложение использовало PKCE.
+     *
+     * `codeVerifier` секретом не является: это одноразовая величина
+     * одной попытки входа.
+     */
     suspend fun exchangeProviderCode(
         provider: String,
         providerCode: String,
         deviceKey: String,
         platform: Platform,
+        codeVerifier: String? = null,
+        providerDeviceId: String? = null,
+        state: String? = null,
+        redirectUri: String? = null,
     ): TokenResponse = post(
         "/v1/auth/provider/$provider/native",
-        ProviderNativeRequest(providerCode, deviceKey, platform.wire),
+        ProviderNativeRequest(
+            providerCode, deviceKey, platform.wire,
+            codeVerifier, providerDeviceId, state, redirectUri,
+        ),
         ProviderNativeRequest.serializer(),
         TokenResponse.serializer(),
     )
@@ -230,6 +277,26 @@ class SimpasIdException(
 data class AuthMethods(val email: Boolean, val providers: List<String> = emptyList())
 
 @Serializable
+data class LegalDocumentList(val documents: List<LegalDocument> = emptyList())
+
+@Serializable
+data class LegalDocument(
+    @SerialName("document_code") val documentCode: String,
+    val title: String,
+    val version: String,
+    /** Неизменяемый адрес ЭТОЙ редакции, относительно issuer. */
+    val url: String,
+    /**
+     * `action` — принимается действием, содержательной кнопкой;
+     * `consent` — отдельное добровольное согласие;
+     * `none` — не принимается вовсе, информационный документ.
+     */
+    val acceptance: String,
+    /** Сервис, к которому относятся Особые условия; у центральных документов — null. */
+    val product: String? = null,
+)
+
+@Serializable
 data class Account(
     val id: String,
     val email: String,
@@ -280,6 +347,10 @@ private data class ProviderNativeRequest(
     @SerialName("provider_code") val providerCode: String,
     @SerialName("device_key") val deviceKey: String,
     val platform: String,
+    @SerialName("code_verifier") val codeVerifier: String? = null,
+    @SerialName("provider_device_id") val providerDeviceId: String? = null,
+    val state: String? = null,
+    @SerialName("redirect_uri") val redirectUri: String? = null,
 )
 
 @Serializable

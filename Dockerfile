@@ -55,12 +55,17 @@ COPY --from=deps        --chown=simpas:simpas /build/server/node_modules ./node_
 COPY --from=server-build --chown=simpas:simpas /build/server/dist ./dist
 COPY --from=server-build --chown=simpas:simpas /build/server/package.json ./package.json
 COPY --chown=simpas:simpas server/openapi ./openapi
+# Тексты юридических документов. Они обязаны ехать В ОБРАЗЕ: отпечаток
+# редакции считается из этих байтов, и подкладывать их на сервер руками
+# значило бы, что опубликованный текст живёт вне сборки.
+COPY --chown=simpas:simpas legal ./legal
 COPY --from=portal-build  --chown=simpas:simpas /build/portal/dist ./portal
 COPY --from=devsite-build --chown=simpas:simpas /build/devsite/dist ./devsite
 
 # Ключи подписи живут в томе, а не в образе: образ публичен по смыслу,
 # ключи — нет. Сервис заводит их сам при первом запуске (Р-3).
 ENV KEYS_DIR=/var/lib/simpasid/keys
+ENV LEGAL_TEXTS_DIR=/app/legal
 ENV PORTAL_DIST=/app/portal
 ENV DEVSITE_DIST=/app/devsite
 RUN mkdir -p /var/lib/simpasid/keys && chown -R simpas:simpas /var/lib/simpasid

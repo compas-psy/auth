@@ -184,3 +184,46 @@ export async function revokeAllMarketing(
   }
   return { revoked };
 }
+
+export interface CurrentDocument {
+  code: string;
+  title: string;
+  version: string;
+  url: string;
+  acceptance: string;
+  product: string | null;
+}
+
+/**
+ * Действующие редакции всех документов Экосистемы.
+ *
+ * Продукту нужно предъявить человеку документ, который тот принимает,
+ * с номером редакции и ссылкой на неё. Номер меняется без выпуска
+ * новой сборки приложения, поэтому вписать его в продукт руками
+ * значит однажды показать человеку не ту редакцию, которую он
+ * принимает.
+ *
+ * Документ без опубликованной редакции сюда не попадает: для сервиса
+ * это и есть ответ «подключать нечего».
+ */
+export async function currentDocuments(): Promise<CurrentDocument[]> {
+  const { rows } = await getPool().query<{
+    code: string; title: string; version: string;
+    immutable_url: string; acceptance: string; product: string | null;
+  }>(
+    `SELECT d.code, d.title, d.acceptance, d.product,
+            v.version, v.immutable_url
+     FROM legal_documents d
+     JOIN legal_document_versions v
+       ON v.code = d.code AND v.version = d.current_version
+     ORDER BY d.code`,
+  );
+  return rows.map((r) => ({
+    code: r.code,
+    title: r.title,
+    version: r.version,
+    url: r.immutable_url,
+    acceptance: r.acceptance,
+    product: r.product,
+  }));
+}

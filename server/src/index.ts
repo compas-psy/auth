@@ -3,6 +3,7 @@ import middie from "@fastify/middie";
 import { loadConfig } from "./config.js";
 import { getPool } from "./db/pool.js";
 import { runMigrations } from "./db/migrate.js";
+import { publishLegalTexts } from "./services/legalTexts.js";
 import { logger, failureKind } from "./lib/logging.js";
 import { buildProvider, OIDC_MOUNT } from "./oidc/provider.js";
 import { registerAuthRoutes } from "./api/v1/auth.js";
@@ -15,6 +16,7 @@ import { registerInteractionRoutes } from "./oidc/interactions.js";
 import { registerPortal, registerDevsite } from "./ui/static.js";
 import { registerLegalRoutes } from "./api/legal.js";
 import { connectConfiguredProviders } from "./services/providers/registry.js";
+import { connectNativeProviders } from "./services/providers/native.js";
 import { renderScreen } from "./ui/render.js";
 
 export interface BuildOptions {
@@ -25,6 +27,16 @@ export interface BuildOptions {
 export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInstance> {
   const config = loadConfig();
   if (opts.migrate) await runMigrations();
+
+  /*
+   * Публикация юридических текстов — до первого запроса.
+   *
+   * Редакция, у которой текст положен в репозиторий, получает
+   * отпечаток, посчитанный из этого текста. Редакция с уже стоящим
+   * отпечатком сверяется: правка опубликованного текста — это не
+   * правка, а подмена доказательства, и она обязана быть видна.
+   */
+  await publishLegalTexts();
 
   const app = Fastify({
     // Свой логгер: штатный печатает URL и заголовки, а в них едут
@@ -112,6 +124,10 @@ export async function buildServer(opts: BuildOptions = {}): Promise<FastifyInsta
   // Подключаем то, для чего переданы ключи. Провайдер без ключей не
   // появляется ни на экране, ни на маршруте возврата.
   await connectConfiguredProviders(config.issuer);
+  // Нативные SDK — отдельным вызовом: браузерный и мобильный контуры
+  // подключаются разным и могут расходиться. Провайдер с ключами, но
+  // без нативного SDK, на мобильном экране не показывается.
+  await connectNativeProviders();
 
   const provider = await buildProvider();
   await app.register(middie);

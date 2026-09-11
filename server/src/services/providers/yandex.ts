@@ -1,4 +1,4 @@
-import type { NativeIdentity } from "./native.js";
+import type { NativeIdentity, NativeAdapter, NativeExchange } from "./native.js";
 
 /**
  * Адреса Яндекс OAuth.
@@ -108,35 +108,40 @@ export function createYandexAdapter(config: YandexConfig): YandexAdapter {
         throw new YandexError("в ответе нет ключа доступа", "token");
       }
 
-      const infoRes = await doFetch(`${YANDEX_ENDPOINTS.userinfo}?format=json`, {
-        headers: { authorization: `OAuth ${token.access_token}` },
-      });
-      if (!infoRes.ok) {
-        throw new YandexError(`профиль недоступен: ${infoRes.status}`, "userinfo");
-      }
-      const profile = (await infoRes.json()) as YandexProfile;
-
-      const subject = typeof profile.id === "string" || typeof profile.id === "number"
-        ? String(profile.id)
-        : "";
-      if (!subject) {
-        // Без устойчивого идентификатора личность не с чем связать:
-        // почта меняется, идентификатор — нет.
-        throw new YandexError("в профиле нет идентификатора", "profile");
-      }
-
-      const email = pickEmail(profile);
-
-      // ЗДЕСЬ ЖЕ всё лишнее и выбрасывается. Яндекс отдаёт ФИО, пол,
-      // день рождения, аватар и телефон — ничего из этого не покидает
-      // эту функцию и никуда не записывается.
-      return {
-        subject,
-        email,
-        emailVerified: email !== null && YANDEX_EMAIL_IS_VERIFIED,
-      };
+      return profileToIdentity(await fetchProfile(doFetch, token.access_token));
     },
   };
+}
+
+/** Профиль Яндекса по ключу доступа. Один на браузерный и нативный вход. */
+async function fetchProfile(doFetch: typeof fetch, accessToken: string): Promise<YandexProfile> {
+  const infoRes = await doFetch(`${YANDEX_ENDPOINTS.userinfo}?format=json`, {
+    headers: { authorization: `OAuth ${accessToken}` },
+  });
+  if (!infoRes.ok) {
+    throw new YandexError(`профиль недоступен: ${infoRes.status}`, "userinfo");
+  }
+  return (await infoRes.json()) as YandexProfile;
+}
+
+/**
+ * Личность из профиля — и ЗДЕСЬ ЖЕ всё лишнее выбрасывается.
+ *
+ * Яндекс отдаёт ФИО, пол, день рождения, аватар и телефон. Ничего из
+ * этого не покидает эту функцию и никуда не записывается: у нас нет
+ * ни экранов, ни колонок под них, и заводить их нельзя.
+ */
+function profileToIdentity(profile: YandexProfile): NativeIdentity {
+  const subject = typeof profile.id === "string" || typeof profile.id === "number"
+    ? String(profile.id)
+    : "";
+  if (!subject) {
+    // Без устойчивого идентификатора личность не с чем связать:
+    // почта меняется, идентификатор — нет.
+    throw new YandexError("в профиле нет идентификатора", "profile");
+  }
+  const email = pickEmail(profile);
+  return { subject, email, emailVerified: email !== null && YANDEX_EMAIL_IS_VERIFIED };
 }
 
 function pickEmail(profile: YandexProfile): string | null {
@@ -167,4 +172,66 @@ export function yandexFromEnv(issuer = "https://auth.cmpas.ru"): YandexAdapter |
     // Точное совпадение с тем, что зарегистрировано у Яндекса.
     redirectUri: `${issuer.replace(/\/+$/, "")}/callback/yandex`,
   });
+}
+
+export interface YandexNativeConfig {
+  clientId: string;
+  clientSecret: string;
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * Нативный вход через Яндекс ID.
+ *
+ * Приложение получает код от SDK Яндекса и отдаёт его нам; обмен идёт
+ * отсюда. Так секрет приложения остаётся на сервере: положить его в
+ * мобильное приложение значит раздать его всем, у кого есть apk.
+ *
+ * PKCE у Яндекса необязателен (сверено с документацией через
+ * `context7`: `POST /token` принимает `code_verifier` как
+ * необязательный параметр). Если приложение его использовало —
+ * передаём; не использовало — обмен проходит на секрете.
+ *
+ * **НЕ ПРОВЕРЕНО:** умеет ли Android-SDK Яндекса отдавать приложению
+ * КОД, а не готовый токен. Документация, прочитанная через `context7`,
+ * описывает протокол, а не SDK. Способ проверки — документация SDK
+ * или ответ поддержки Яндекса; это действие человека. Если окажется,
+ * что SDK отдаёт только токен, нативный вход через Яндекс придётся
+ * строить иначе, и адаптер здесь заменяется целиком.
+ */
+export function createYandexNativeAdapter(config: YandexNativeConfig): NativeAdapter {
+  const doFetch = config.fetchImpl ?? fetch;
+  // Обмен и разбор профиля общие с браузерным входом: адрес возврата
+  // Яндексу в обмене не нужен, а всё остальное совпадает буквально.
+  return {
+    provider: "yandex",
+    async exchange({ code, codeVerifier }: NativeExchange): Promise<NativeIdentity> {
+      const tokenRes = await doFetch(YANDEX_ENDPOINTS.token, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          code,
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+          ...(codeVerifier ? { code_verifier: codeVerifier } : {}),
+        }),
+      });
+      if (!tokenRes.ok) {
+        throw new YandexError(`обмен кода отклонён: ${tokenRes.status}`, "token");
+      }
+      const token = (await tokenRes.json()) as { access_token?: unknown };
+      if (typeof token.access_token !== "string" || !token.access_token) {
+        throw new YandexError("в ответе нет ключа доступа", "token");
+      }
+      return profileToIdentity(await fetchProfile(doFetch, token.access_token));
+    },
+  };
+}
+
+export function yandexNativeFromEnv(): NativeAdapter | null {
+  const clientId = process.env.YANDEX_CLIENT_ID?.trim();
+  const clientSecret = process.env.YANDEX_CLIENT_SECRET?.trim();
+  if (!clientId || !clientSecret) return null;
+  return createYandexNativeAdapter({ clientId, clientSecret });
 }

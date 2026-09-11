@@ -188,3 +188,18 @@ describe("кто может обращаться к обмену из брауз
     expect(r.body).not.toContain("not allowed for client");
   });
 });
+
+describe("знак СИМПАС отдаётся продуктам", () => {
+  /**
+   * Четыре продукта получают знак из одного места — иначе каждый
+   * нарисует свой. Адрес назван в docs/integration/checklist.md, и
+   * документ, обещающий адрес, который отвечает 404, хуже молчания:
+   * ровно так мы уже потеряли день на /return/:product.
+   */
+  it("канонический знак открывается по адресу из рецепта", async () => {
+    const r = await app.inject({ url: "/assets/brand/simpas-logo-disc.svg" });
+    expect(r.statusCode).toBe(200);
+    expect(String(r.headers["content-type"])).toContain("svg");
+    expect(r.body).toContain("<svg");
+  });
+});

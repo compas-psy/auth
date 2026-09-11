@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { loadOrCreateKeys } from "../../lib/keys.js";
 import { logger } from "../../lib/logging.js";
-import type { NativeIdentity } from "./native.js";
+import type { NativeIdentity, NativeAdapter, NativeExchange } from "./native.js";
 
 /**
  * Адреса VK ID.
@@ -56,6 +56,14 @@ export interface VkidConfig {
   clientId: string;
   redirectUri: string;
   fetchImpl?: typeof fetch;
+  /**
+   * Проверочный код PKCE, заданный снаружи.
+   *
+   * Нужен нативному входу: там авторизацию начинало приложение, и
+   * вывести код из нашего state нельзя — state загадывали не мы.
+   * В браузерном входе не задаётся, и код выводится как прежде.
+   */
+  codeVerifierOverride?: string;
 }
 
 /** Что приходит на адрес возврата: код, state и идентификатор устройства. */
@@ -153,7 +161,7 @@ export function createVkidAdapter(config: VkidConfig): VkidAdapter {
       const token = await form(VKID_ENDPOINTS.token, new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        code_verifier: codeVerifierFor(state),
+        code_verifier: config.codeVerifierOverride ?? codeVerifierFor(state),
         client_id: config.clientId,
         redirect_uri: config.redirectUri,
         device_id: deviceId,
@@ -259,4 +267,59 @@ export function vkidFromEnv(issuer = "https://auth.cmpas.ru"): VkidAdapter | nul
     // Точное совпадение с доверенным адресом в настройках приложения VK.
     redirectUri: `${issuer.replace(/\/+$/, "")}/callback/vkid`,
   });
+}
+
+export interface VkidNativeConfig {
+  clientId: string;
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * Нативный вход через VK ID.
+ *
+ * Отличие от браузерного — в том, КТО начинал авторизацию. В браузере
+ * её начинаем мы, поэтому проверочный код PKCE выводится из нашего
+ * state ключом сервиса и нигде не хранится. В приложении её начинает
+ * SDK: state, проверочный код и `device_id` знает только оно, и все
+ * три обязаны приехать вместе с кодом — VK требует их в обмене
+ * (сверено с описанием метода через `context7`).
+ *
+ * Секрета приложения здесь нет и не нужно: VK в обмене его не
+ * спрашивает, защита держится на PKCE.
+ *
+ * Проверка полноты стоит ДО обращения к VK: без любого из трёх обмен
+ * всё равно не пройдёт, а лишний запрос с чужим кодом делать незачем.
+ */
+export function createVkidNativeAdapter(config: VkidNativeConfig): NativeAdapter {
+  const doFetch = config.fetchImpl ?? fetch;
+
+  return {
+    provider: "vkid",
+    async exchange(
+      { code, codeVerifier, deviceId, state, redirectUri }: NativeExchange,
+    ): Promise<NativeIdentity> {
+      if (!codeVerifier) throw new VkidError("возврат без проверочного кода", "return");
+      if (!deviceId) throw new VkidError("возврат без device_id", "return");
+      if (!state) throw new VkidError("возврат без строки состояния", "return");
+
+      const inner = createVkidAdapter({
+        clientId: config.clientId,
+        // Адрес возврата называет ПРИЛОЖЕНИЕ: у нативного входа это
+        // его собственная схема, и VK сверяет её со своим перечнем
+        // доверенных адресов. Перенаправления по нему мы не делаем.
+        redirectUri: redirectUri ?? "",
+        fetchImpl: doFetch,
+        // Проверочный код — приложения, а не выведенный из нашего
+        // state: авторизацию начинали не мы.
+        codeVerifierOverride: codeVerifier,
+      });
+      return inner.exchange({ code, state, deviceId });
+    },
+  };
+}
+
+export function vkidNativeFromEnv(): NativeAdapter | null {
+  const clientId = process.env.VKID_CLIENT_ID?.trim();
+  if (!clientId || !VK_APP_ID.test(clientId)) return null;
+  return createVkidNativeAdapter({ clientId });
 }

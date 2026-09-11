@@ -309,6 +309,37 @@ paths:
               schema: { $ref: "#/components/schemas/AuditList" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
+  /legal/documents:
+    get:
+      operationId: listLegalDocuments
+      tags: [consents]
+      summary: Действующие редакции документов
+      description: |
+        Перечень документов Экосистемы с ДЕЙСТВУЮЩЕЙ редакцией, названием и
+        неизменяемым адресом текста.
+
+        Нужен продукту, чтобы предъявить человеку документ, который тот
+        принимает: строку «Начиная работу, вы принимаете Особые условия
+        ПРАКТИКИ, редакция 1.0» и ссылку на эту самую редакцию. Номер
+        редакции меняется без выпуска новой сборки приложения, поэтому
+        вписывать его в продукт руками нельзя — однажды человеку
+        предъявят не ту редакцию, которую он принимает.
+
+        Документа без опубликованной редакции в перечне НЕТ. Для сервиса
+        это и есть ответ «подключать нечего»: подключение сервиса без
+        Особых условий означает, что человек согласился с тем, чего не
+        существует.
+
+        Входа не требует: это публичные документы, и их читают до того,
+        как человек вообще завёл учётную запись.
+      security: []
+      responses:
+        "200":
+          description: Действующие редакции
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LegalDocumentList" }
+
   /auth/methods:
     get:
       operationId: getAuthMethods
@@ -806,6 +837,51 @@ components:
           description: Принятые документы с редакцией.
           items: { $ref: "#/components/schemas/AcceptedDocument" }
 
+    LegalDocumentList:
+      type: object
+      description: Документы Экосистемы с действующей редакцией.
+      required: [documents]
+      properties:
+        documents:
+          type: array
+          items: { $ref: "#/components/schemas/LegalDocument" }
+
+    LegalDocument:
+      type: object
+      description: Документ Экосистемы в действующей редакции.
+      required: [document_code, title, version, url, acceptance]
+      properties:
+        document_code:
+          type: string
+          description: Код документа.
+          examples: ["cmpas_practice_terms"]
+        title:
+          type: string
+          description: Название документа.
+          examples: ["Особые условия ПРАКТИКИ"]
+        version:
+          type: string
+          description: Действующая редакция.
+          examples: ["0.9"]
+        url:
+          type: string
+          description: Неизменяемый адрес этой редакции.
+          examples: ["/legal/practice-terms/0.9"]
+        acceptance:
+          type: string
+          enum: [action, consent, none]
+          description: |
+            Как принимается: `action` — действием, содержательной кнопкой;
+            `consent` — отдельным добровольным согласием; `none` — не
+            принимается вовсе, информационный документ.
+          examples: ["action"]
+        product:
+          type: string
+          description: |
+            Сервис, к которому относятся Особые условия. У центральных
+            документов Экосистемы поля нет.
+          examples: ["practice"]
+
     SetConsentRequest:
       type: object
       description: Изменение согласия.
@@ -936,6 +1012,40 @@ components:
           description: Ключ устройства.
           examples: ["dev-1"]
         platform: { $ref: "#/components/schemas/Platform" }
+        code_verifier:
+          type: string
+          description: |
+            Проверочный код PKCE, который приложение загадало перед входом.
+
+            В браузерном входе авторизацию начинаем мы и потому знаем его
+            сами. В нативном её начинает приложение — значение существует
+            только у него. VK ID без него обмен не проводит; Яндексу он
+            необязателен.
+
+            Секретом не является: одноразовая величина одной попытки входа.
+            Ключ приложения на устройстве не появляется ни в каком виде.
+          examples: ["dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk"]
+        provider_device_id:
+          type: string
+          description: |
+            Идентификатор устройства, выданный внешним сервисом вместе с
+            кодом. Требует VK ID. Не путать с `device_key` — тот наш и
+            описывает устройство в списке сеансов.
+          examples: ["dev-vk-1"]
+        state:
+          type: string
+          description: |
+            Та же строка состояния, с которой приложение начинало вход.
+            Требует VK ID.
+          examples: ["hS3tL4lwhV4AUrPigxg6uiRWrrP3PC116WIlBurah0"]
+        redirect_uri:
+          type: string
+          description: |
+            Адрес возврата, который приложение назвало внешнему сервису.
+            У нативного входа это собственная схема приложения. Мы по нему
+            никуда не перенаправляем — он только передаётся внешнему
+            сервису, который сверяет его со своим перечнем доверенных.
+          examples: ["vk53814927://vk.com/blank.html"]
 
     RefreshRequest:
       type: object

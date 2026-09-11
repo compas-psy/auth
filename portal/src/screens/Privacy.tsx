@@ -35,6 +35,28 @@ export function Privacy({
           ))}
         </ul></Panel>
       </section>
+
+      {/* Реестры и Политика — на нашем домене, а не в продукте.
+          Центральный документ Экосистемы не может открываться с
+          cmpas.ru (13_LEGAL_CONSENT_CENTER_AUTH.md §4). */}
+      <section>
+        <p className="section-label">{privacy.referencesTitle}</p>
+        <Panel><ul className="document-list">
+          <li className="row">
+            <span className="row-label">{privacy.policyLink}</span>
+            <span className="row-value muted">{privacy.policyHint}</span>
+            <a className="secondary-button" href="/legal/privacy">{privacy.openReference}</a>
+          </li>
+          <li className="row">
+            <span className="row-label">{privacy.servicesLink}</span>
+            <a className="secondary-button" href="/legal/services">{privacy.openReference}</a>
+          </li>
+          <li className="row">
+            <span className="row-label">{privacy.processorsLink}</span>
+            <a className="secondary-button" href="/legal/processors">{privacy.openReference}</a>
+          </li>
+        </ul></Panel>
+      </section>
     </Shell>
   );
 }
