@@ -4,6 +4,7 @@ import {
   issueTokens, rotateRefresh, revokeSession, TokenError, verifyAccessToken,
 } from "../../services/tokens.js";
 import { writeAudit } from "../../services/audit.js";
+import { logger } from "../../lib/logging.js";
 import { getPool } from "../../db/pool.js";
 import { sha256 } from "../../lib/hash.js";
 import { issueEmailCode, verifyEmailCode } from "../../services/emailCode.js";
@@ -166,8 +167,24 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           state: body.state,
           redirectUri: body.redirect_uri,
         });
-      } catch {
+      } catch (err) {
         await writeAudit({ event: "provider_exchange", provider, outcome: "fail", ip: req.ip });
+        // Стадия — в ЛОГ, а не в ответ и не в журнал человека.
+        //
+        // Снаружи «подпись не сошлась», «профиль недоступен» и «в
+        // профиле нет идентификатора» обязаны выглядеть одинаково:
+        // различать их в ответе значит рассказывать подбирающему,
+        // насколько он близок. Но и нам они были неразличимы — первый
+        // живой вход через Яндекс не прошёл, и сказать почему было
+        // нечем (issue #27).
+        logger.warn({
+          event: "provider_exchange_failed",
+          provider,
+          stage: exchangeFailureStage(err),
+          // Имена полей проверенного подписью JWT — когда подпись
+          // сошлась, а личности в нагрузке нет. Ключи, не значения.
+          ...exchangeFailureClaims(err),
+        });
         return reply.code(400).send({ error: "invalid_provider_code" });
       }
 
@@ -313,3 +330,25 @@ export async function currentSessionOf(token: string): Promise<string | null> {
 }
 
 export { issueTokens };
+
+/**
+ * Стадия отказа обмена одним машинным словом.
+ *
+ * Текст ошибки НЕ берётся: он может содержать что угодно, включая
+ * присланное извне, а журналу нужно различать четыре случая, а не
+ * пересказывать их. Чужая ошибка честно называется `unknown` — иначе
+ * это слово стало бы самым частым в журнале, и журнал перестал бы
+ * отвечать на вопрос, ради которого заведён.
+ */
+export function exchangeFailureClaims(err: unknown): { claims?: string } {
+  const claims = (err as { claims?: unknown } | null)?.claims;
+  // Форма проверяется здесь ещё раз: журнал — последнее место, где
+  // стоит полагаться на чужую аккуратность.
+  return typeof claims === "string" && /^[a-z0-9_,]{1,400}$/i.test(claims)
+    ? { claims } : {};
+}
+
+export function exchangeFailureStage(err: unknown): string {
+  const stage = (err as { stage?: unknown } | null)?.stage;
+  return typeof stage === "string" && stage ? stage : "unknown";
+}
