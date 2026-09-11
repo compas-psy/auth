@@ -138,3 +138,61 @@ describe("состав полей называется, когда личнос�
     expect((err as { claims?: string }).claims).toBeUndefined();
   });
 });
+
+/**
+ * Настоящий JWT Яндекса называет поля иначе, чем справочник профиля.
+ *
+ * Состав, предъявленный боевым сервером 11.09.2026 (issue #27):
+ * `display_name, email, exp, gender, iat, iss, jti, login, name,
+ * phone, psuid, uid`.
+ *
+ * Подпись при этом СОШЛАСЬ — значит `getJwt` подписывает секретом
+ * нашего приложения, и то «не проверено» снялось в хорошую сторону.
+ * Не сошлись имена: `uid` вместо `id`, `email` вместо `default_email`.
+ *
+ * ── Почему `uid`, а не `psuid` ──────────────────────────────────────
+ *
+ * `psuid` — псевдоним, свой для каждого приложения. Взять его значит
+ * выдать одному человеку РАЗНЫЕ личности в браузере и в приложении:
+ * браузерный вход берёт `id` из `login.yandex.ru/info`, а это тот же
+ * `uid`. Человек получил бы две учётные записи и не понял бы, почему
+ * его записи пропали.
+ *
+ * Приватность псевдонима здесь проигрывает связности: у нас один
+ * человек — одна учётная запись, это обещание сервиса.
+ */
+describe("состав полей настоящего JWT", () => {
+  const НАСТОЯЩИЙ = {
+    uid: "1234567890", psuid: "psuid-inoy-dlya-kazhdogo-prilozheniya",
+    email: "chelovek@yandex.ru", login: "chelovek",
+    display_name: "Человек", name: "Имя Фамилия", gender: "male",
+    phone: "+70000000000", iss: "https://oauth.yandex.ru", jti: "x",
+  };
+
+  it("личность собирается из uid и email", async () => {
+    const identity = await адаптер().exchange({ jwt: await подписать(НАСТОЯЩИЙ, SECRET) });
+    expect(identity.subject).toBe("1234567890");
+    expect(identity.email).toBe("chelovek@yandex.ru");
+  });
+
+  it("psuid не берётся: в браузере тот же человек придёт с uid", async () => {
+    const identity = await адаптер().exchange({ jwt: await подписать(НАСТОЯЩИЙ, SECRET) });
+    expect(identity.subject).not.toContain("psuid");
+  });
+
+  it("ФИО, пол и ТЕЛЕФОН не покидают разбор", async () => {
+    // Телефон в нагрузке есть — и это ровно то, чего у нас не может
+    // быть ни в одной колонке (И-2). Личность его не выносит.
+    const identity = await адаптер().exchange({ jwt: await подписать(НАСТОЯЩИЙ, SECRET) });
+    expect(JSON.stringify(identity)).not.toMatch(/\+7|Имя|male|Человек/);
+    expect(Object.keys(identity).sort()).toEqual(["email", "emailVerified", "subject"]);
+  });
+
+  it("прежние имена тоже принимаются: браузерный путь не тронут", async () => {
+    const identity = await адаптер().exchange({
+      jwt: await подписать({ id: "42", default_email: "a@ya.ru" }, SECRET),
+    });
+    expect(identity.subject).toBe("42");
+    expect(identity.email).toBe("a@ya.ru");
+  });
+});
