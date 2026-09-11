@@ -46,6 +46,7 @@ services:
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
       VKID_CLIENT_ID: ${VKID_CLIENT_ID:-}
+      VKID_NATIVE_CLIENT_ID: ${VKID_NATIVE_CLIENT_ID:-}
     ports:
       # ТОЛЬКО на петлю: наружу сервис выходит через nginx на хосте,
       # тем же способом, каким уже опубликованы cmpas.ru и moments.

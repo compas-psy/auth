@@ -273,8 +273,28 @@ class SimpasIdException(
     val status: Int,
 ) : RuntimeException(message)
 
+/**
+ * Способы входа, как их видит приложение.
+ *
+ * `providers` — чей код сервер готов обменять на личность.
+ * `providerAppIds` — чем заводить SDK провайдера: идентификатор
+ * приложения у провайдера.
+ *
+ * Второе поле существует, чтобы у идентификатора было ОДНО место
+ * правды. Ключи заводит СИМПАС; зашитый в продукт идентификатор
+ * означает, что о смене ключа продукт узнает от сломавшегося входа.
+ * Секретом идентификатор не является — он и так уезжает в приложение
+ * на устройстве, — но и выдумывать его продукту неоткуда.
+ *
+ * На вебе поле приходит пустым: там SDK провайдера не заводится, вход
+ * идёт через OIDC с перенаправлением.
+ */
 @Serializable
-data class AuthMethods(val email: Boolean, val providers: List<String> = emptyList())
+data class AuthMethods(
+    val email: Boolean,
+    val providers: List<String> = emptyList(),
+    @SerialName("provider_app_ids") val providerAppIds: Map<String, String> = emptyMap(),
+)
 
 @Serializable
 data class LegalDocumentList(val documents: List<LegalDocument> = emptyList())

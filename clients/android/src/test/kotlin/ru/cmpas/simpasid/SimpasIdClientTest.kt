@@ -132,6 +132,28 @@ class SimpasIdClientTest {
     }
 
     @Test
+    @DisplayName("идентификаторы приложений провайдеров приходят с сервера")
+    fun provider_app_ids_are_parsed() = runTest {
+        // SDK провайдера нечем завести без идентификатора приложения.
+        // Зашить его в приложение значит развести два места правды:
+        // ключи заводит СИМПАС, а знать о смене должен продукт. Поэтому
+        // идентификаторы приезжают тем же ответом, что и состав кнопок.
+        json(200, """{"email":true,"providers":["yandex","vkid"],""" +
+            """"provider_app_ids":{"yandex":"abc123","vkid":"54757306"}}""")
+        val methods = client.authMethods(Platform.ANDROID)
+        assertEquals("abc123", methods.providerAppIds["yandex"])
+        assertEquals("54757306", methods.providerAppIds["vkid"])
+    }
+
+    @Test
+    @DisplayName("ответ без идентификаторов приложений не ломает разбор")
+    fun missing_provider_app_ids_are_not_an_error() = runTest {
+        // На вебе их и не присылают: там SDK провайдера не заводится.
+        json(200, """{"email":true,"providers":["yandex"]}""")
+        assertTrue(client.authMethods(Platform.WEB).providerAppIds.isEmpty())
+    }
+
+    @Test
     @DisplayName("пустой список провайдеров — не ошибка")
     fun empty_provider_list_is_not_an_error() = runTest {
         // Провайдер без подключённого нативного SDK на мобильном экране

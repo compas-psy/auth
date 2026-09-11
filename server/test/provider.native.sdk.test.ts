@@ -151,6 +151,62 @@ describe("подключение нативных SDK по ключам окру
     expect(nativeAdapterFor("vkid")).toBeDefined();
   });
 
+  /**
+   * У ВК приложение заводится отдельно под каждую платформу, и
+   * 11.09.2026 у мобильного входа появился СВОЙ идентификатор,
+   * отличный от веб-приложения. Код, выданный SDK мобильного
+   * приложения, ВК обменивает только на его же client_id: подставь
+   * веб-идентификатор — и придёт `invalid_client`, а человек увидит
+   * «вход не работает» без причины.
+   *
+   * Поэтому у нативного входа своя переменная. Умолчанием она
+   * остаётся прежней: пока приложение у ВК одно на все платформы,
+   * задавать вторую переменную незачем.
+   */
+  it("у мобильного ВК свой идентификатор приложения", async () => {
+    const { nativeAppIds } = await import("../src/services/providers/native.js");
+    vi.stubEnv("YANDEX_CLIENT_ID", "");
+    vi.stubEnv("YANDEX_CLIENT_SECRET", "");
+    vi.stubEnv("VKID_CLIENT_ID", "53814927");
+    vi.stubEnv("VKID_NATIVE_CLIENT_ID", "60001111");
+    await connectNativeProviders();
+    expect(await nativeAppIds()).toEqual({ vkid: "60001111" });
+  });
+
+  it("без своей переменной мобильный ВК берёт тот же идентификатор, что веб", async () => {
+    const { nativeAppIds } = await import("../src/services/providers/native.js");
+    vi.stubEnv("YANDEX_CLIENT_ID", "");
+    vi.stubEnv("YANDEX_CLIENT_SECRET", "");
+    vi.stubEnv("VKID_CLIENT_ID", "53814927");
+    vi.stubEnv("VKID_NATIVE_CLIENT_ID", "");
+    await connectNativeProviders();
+    expect(await nativeAppIds()).toEqual({ vkid: "53814927" });
+  });
+
+  it("негодный VKID_NATIVE_CLIENT_ID не подключается, а к вебу не откатывается", async () => {
+    // Откат на веб-идентификатор при опечатке дал бы кнопку, ведущую в
+    // чужую ошибку ВК, — ровно то, против чего заведена проверка вида.
+    // Лучше ни одной кнопки, чем кнопка в «Ошибка загрузки».
+    vi.stubEnv("YANDEX_CLIENT_ID", "");
+    vi.stubEnv("YANDEX_CLIENT_SECRET", "");
+    vi.stubEnv("VKID_CLIENT_ID", "53814927");
+    vi.stubEnv("VKID_NATIVE_CLIENT_ID", "Zaschischonnyj-Kljuch");
+    await connectNativeProviders();
+    expect(await availableProviders("android")).toEqual([]);
+  });
+
+  it("свой идентификатор мобильного не подменяет веб-вход", async () => {
+    // Два приложения ВК живут рядом и не знают друг о друге: браузер
+    // уходит на веб-приложение, обмен кода из мобильного идёт на
+    // мобильное. Перепутать их — значит сломать ту половину, которая
+    // работала.
+    const { vkidFromEnv } = await import("../src/services/providers/vkid.js");
+    vi.stubEnv("VKID_CLIENT_ID", "53814927");
+    vi.stubEnv("VKID_NATIVE_CLIENT_ID", "60001111");
+    const url = new URL(vkidFromEnv()!.authorizationUrl("проба"));
+    expect(url.searchParams.get("client_id")).toBe("53814927");
+  });
+
   it("негодный VKID_CLIENT_ID не подключается и на мобильном", async () => {
     // Та же проверка вида, что и в вебе: «Защищённый ключ» вместо
     // «ID приложения» даёт кнопку, ведущую в чужую ошибку.

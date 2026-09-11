@@ -319,8 +319,43 @@ export function createVkidNativeAdapter(config: VkidNativeConfig): NativeAdapter
   };
 }
 
+/**
+ * Подключение нативного ВК по ключам окружения.
+ *
+ * ── Почему переменная своя ──────────────────────────────────────────
+ *
+ * У ВК приложение заводится под платформу: у веб-приложения доверенный
+ * адрес возврата, у мобильного — имя пакета и отпечаток подписи. Когда
+ * платформы разнесены по разным приложениям, идентификаторы у них
+ * РАЗНЫЕ (так и вышло 11.09.2026 при подключении Android ПРАКТИКИ).
+ *
+ * Код, выданный SDK мобильного приложения, ВК обменивает только на его
+ * же `client_id`. Подставить веб-идентификатор — получить
+ * `invalid_client`, а человеку показать «вход не работает» без причины.
+ *
+ * Умолчание остаётся прежним: пока приложение у ВК одно на все
+ * платформы, второй переменной заводить не нужно и ничего не меняется.
+ *
+ * Отката на веб-идентификатор при ОПЕЧАТКЕ в своей переменной нет
+ * намеренно. Откат дал бы кнопку, ведущую в чужую ошибку ВК, — ровно
+ * то, против чего заведена проверка вида ключа. Лучше ни одной кнопки,
+ * чем кнопка в «Ошибка загрузки».
+ */
 export function vkidNativeFromEnv(): NativeAdapter | null {
-  const clientId = process.env.VKID_CLIENT_ID?.trim();
-  if (!clientId || !VK_APP_ID.test(clientId)) return null;
+  const native = process.env.VKID_NATIVE_CLIENT_ID?.trim();
+  const clientId = native || process.env.VKID_CLIENT_ID?.trim();
+  if (!clientId) return null;
+
+  if (!VK_APP_ID.test(clientId)) {
+    // Значение не печатается по той же причине, что и в вебе:
+    // положенный не в ту переменную ключ остаётся ключом.
+    logger.warn({
+      event: "provider_not_connected",
+      provider: "vkid",
+      reason: native ? "native_client_id_not_app_id" : "client_id_not_app_id",
+      length: clientId.length,
+    });
+    return null;
+  }
   return createVkidNativeAdapter({ clientId });
 }

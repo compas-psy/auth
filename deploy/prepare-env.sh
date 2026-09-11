@@ -40,8 +40,13 @@ simpasid_put() {
 # VKID_CLIENT_ID без пары: обмен кода у VK идёт БЕЗ секрета приложения —
 # защита держится на PKCE и зарегистрированном адресе возврата. Секрет,
 # который негде применить, на сервере не нужен.
+#
+# VKID_NATIVE_CLIENT_ID — идентификатор ОТДЕЛЬНОГО приложения VK под
+# мобильную платформу. Необязателен: пока приложение одно на все
+# платформы, мобильный вход берёт тот же идентификатор, что и веб.
 for simpasid_key in \
-  SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET VKID_CLIENT_ID \
+  SIMPASID_DB_PASSWORD YANDEX_CLIENT_ID YANDEX_CLIENT_SECRET \
+  VKID_CLIENT_ID VKID_NATIVE_CLIENT_ID \
   MAIL_ENDPOINT MAIL_TOKEN
 do
   eval "simpasid_value=\${$simpasid_key:-}"
