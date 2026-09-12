@@ -310,16 +310,19 @@ jobs:
             # Есть записи — работаем мы; нет — отказ случился на
             # устройстве, в SDK провайдера, и разбирать надо там.
             #
-            # СОБЫТИЙ ТРИ, И ЭТО НЕ ПРИДИРКА. Первая редакция смотрела
-            # только provider_exchange и показывала одни отказы: успех
-            # пишется как login_provider_native, и увидеть удавшийся
-            # вход было нельзя в принципе. Раздел, который умеет
-            # показать только плохое, — плохой раздел.
+            # ПЕРЕЧНЯ ИМЁН ЗДЕСЬ БОЛЬШЕ НЕТ, и это исправление дважды
+            # обжёгшей ошибки. Первая редакция смотрела только
+            # provider_exchange и показывала одни отказы. Вторая
+            # перечисляла три имени — и промолчала про
+            # provider_email_required, заведённое 12.09.2026: отказ ВК
+            # по И-5 в разделе не появился бы вовсе.
+            # Берём ВСЁ, у чего назван провайдер. Перечень имён живёт
+            # до следующего нового исхода и потом молча врёт.
             docker exec simpasid-postgres psql -U simpasid -d simpasid -At \
               -c "SELECT event || ' ' || coalesce(provider,'—') || ' ' || outcome
                          || ': ' || count(*)
                   FROM audit_log
-                  WHERE event IN ('provider_exchange','login_provider_native','provider_login')
+                  WHERE provider IS NOT NULL
                     AND at > now() - interval '24 hours'
                   GROUP BY event, provider, outcome ORDER BY 1" \
               2>&1 || echo "журнал не прочитан"

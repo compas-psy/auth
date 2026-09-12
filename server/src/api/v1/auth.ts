@@ -61,6 +61,11 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       email?: string; device_key?: string; platform?: string; terms_version?: string;
     };
     if (!body.email || !body.device_key || !body.platform) {
+    // Испорченное тело тоже оставляет след: иначе «записей нет»
+    // означает то же, что «клиент шлёт мусор», и разбирать нечем.
+    // Причина отказа живёт в ИМЕНИ события — колонки под причину в
+    // журнале нет и не будет, она собирала бы подробности о человеке.
+      await writeAudit({ event: "email_start", outcome: "fail", ip: req.ip });
       return reply.code(400).send({ error: "invalid_request" });
     }
     const result = await issueEmailCode({
@@ -85,6 +90,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       email?: string; code?: string; device_key?: string; platform?: string;
     };
     if (!body.email || !body.code || !body.device_key) {
+      await writeAudit({ event: "email_verify", outcome: "fail", ip: req.ip });
       return reply.code(400).send({ error: "invalid_request" });
     }
     const started = Date.now();
@@ -144,6 +150,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       // мы не будем: угаданный выбор сломается молча и не сегодня.
       const предъявлено = Number(Boolean(body.provider_code)) + Number(Boolean(body.provider_jwt));
       if (предъявлено !== 1 || !body.device_key || !body.platform) {
+        await writeAudit({ event: "provider_native_bad_request", provider,
+          outcome: "fail", ip: req.ip });
         return reply.code(400).send({ error: "invalid_request" });
       }
 
@@ -151,6 +159,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       // Провайдера без подключённого и проверенного SDK здесь нет —
       // и на мобильном экране его тоже нет. Это следствие требования.
       if (!adapter) {
+        await writeAudit({ event: "provider_unavailable", provider,
+          outcome: "fail", ip: req.ip });
         return reply.code(400).send({ error: "provider_unavailable" });
       }
 
@@ -191,7 +201,19 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       // И-5: у каждой учётной записи всегда есть ПОДТВЕРЖДЁННАЯ почта.
       // Слово провайдера «адрес такой» без признака подтверждения его
       // не заменяет — ведёт на экран запроса почты (A7н).
+      //
+      // ЗАПИСЬ ЗДЕСЬ ОБЯЗАТЕЛЬНА, и вот чего стоило её отсутствие.
+      // Нативный вход ВК отказывал ровно тут: ВК отдаёт профиль без
+      // адреса, если приложение не запросило область доступа `email`
+      // само (в браузерном входе её ставим мы). Это был единственный
+      // исход маршрута без следа в журнале — осмотр честно показывал
+      // «записей с provider = vkid нет», мы честно читали это как
+      // «запрос до нас не дошёл», и агент ПРАКТИКИ двое суток проверял
+      // устройство, где всё было в порядке (issue #27, 12.09.2026).
+      // «Ноль записей» обязано означать ровно одно: запрос не пришёл.
       if (!identity.email || !identity.emailVerified) {
+        await writeAudit({ event: "provider_email_required", provider,
+          outcome: "fail", ip: req.ip });
         return reply.code(422).send({ error: "email_required" });
       }
 
@@ -235,6 +257,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   app.post("/v1/auth/token/refresh", async (req, reply) => {
     const body = (req.body ?? {}) as RefreshBody;
     if (!body.refresh_token) {
+      await writeAudit({ event: "token_refresh", outcome: "fail", ip: req.ip });
       return reply.code(400).send({ error: "invalid_request" });
     }
     try {
