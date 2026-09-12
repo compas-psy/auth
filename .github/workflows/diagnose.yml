@@ -274,6 +274,7 @@ jobs:
 
             native=$(docker exec simpasid-app printenv VKID_NATIVE_CLIENT_ID 2>/dev/null || true)
             web=$(docker exec simpasid-app printenv VKID_CLIENT_ID 2>/dev/null || true)
+            yandex=$(docker exec simpasid-app printenv YANDEX_CLIENT_ID 2>/dev/null || true)
             if [ -z "$native" ]; then
               echo "ВК: своего идентификатора у мобильного нет — берётся тот же, что у веба"
             elif [ "$native" = "$web" ]; then
@@ -281,6 +282,27 @@ jobs:
             else
               echo "ВК: у мобильного свой идентификатор, отличный от веба"
             fi
+
+            # ОТПЕЧАТОК, А НЕ ЗНАЧЕНИЕ: первые два знака, последние два,
+            # длина. Ровно в этом виде идентификаторы из собранного APK
+            # называет агент ПРАКТИКИ, и сверка получается глазами по
+            # трём числам, без пересылки значений между репозиториями.
+            # Расхождение отпечатка означает, что приложение и сервер
+            # говорят про разные приложения провайдера, — а это отказ
+            # обмена при полностью исправном SDK на устройстве.
+            fp() {
+              v="$2"
+              if [ -z "$v" ]; then echo "$1: не задан"; return; fi
+              n=${#v}
+              if [ "$n" -lt 4 ]; then echo "$1: длина $n — короче отпечатка"; return; fi
+              printf '%s: %s…%s, знаков %s\n' \
+                "$1" "$(printf '%s' "$v" | cut -c1-2)" \
+                "$(printf '%s' "$v" | cut -c$((n - 1))-)" "$n"
+            }
+            fp "ВК мобильный (VKID_NATIVE_CLIENT_ID)" "$native"
+            fp "ВК браузерный (VKID_CLIENT_ID)" "$web"
+            fp "Яндекс (YANDEX_CLIENT_ID)" "$yandex"
+            echo "--- сверяется с отпечатками из APK у агента ПРАКТИКИ"
 
             echo
             echo "== нативный вход: что было за сутки =="
